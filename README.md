@@ -4,7 +4,7 @@ A GNOME Shell extension that shows your **Claude Code plan usage** in the top ba
 
 Unlike other Claude usage extensions, it reads the official endpoint's modern `limits[]` array, so it shows **every** limit including **per-model weekly limits** (e.g. Fable), not just the aggregate session/weekly pair.
 
-<img src="docs/screenshot.svg" alt="Claude Usage Panel dropdown" width="420">
+<img src="docs/screenshot.png" alt="Claude Usage Panel dropdown" width="420">
 
 ## Features
 
