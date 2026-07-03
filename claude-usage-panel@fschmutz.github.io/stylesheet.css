@@ -1,0 +1,109 @@
+/* Claude Usage Panel — Claude-flavored dark card design.
+   Accent = Claude "crail" orange #d97757. */
+
+/* ---- panel button ---- */
+.cu-panel {
+    spacing: 6px;
+    padding: 0 4px;
+}
+.cu-panel-icon {
+    color: #d97757;
+    font-size: 13px;
+    font-weight: bold;
+    -st-icon-style: symbolic;
+}
+.cu-panel-label {
+    font-weight: 600;
+    font-feature-settings: "tnum";
+}
+
+/* severity colors, shared by panel + cards */
+.cu-normal   { color: #e6e1d7; }
+.cu-warning  { color: #e0a458; }
+.cu-critical { color: #e5484d; }
+
+/* ---- popup shell ---- */
+.cu-header {
+    padding: 6px 6px 10px 6px;
+    spacing: 2px;
+}
+.cu-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0.2px;
+}
+.cu-plan {
+    color: #9a948a;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.cu-cards {
+    spacing: 10px;
+    padding: 0 2px;
+    min-width: 340px;
+}
+
+/* ---- one limit card ---- */
+.cu-card {
+    spacing: 6px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background-color: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.cu-card:hover {
+    background-color: rgba(255, 255, 255, 0.07);
+}
+.cu-card-head {
+    spacing: 8px;
+}
+.cu-card-label {
+    color: #cfc9bd;
+    font-size: 13px;
+    font-weight: 600;
+    y-align: center;
+}
+.cu-card-pct {
+    font-size: 15px;
+    font-weight: 800;
+    font-feature-settings: "tnum";
+}
+
+/* progress track + fill. TRACK_WIDTH in extension.js must equal min-width. */
+.cu-track {
+    min-width: 300px;
+    height: 8px;
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.10);
+}
+.cu-fill {
+    height: 8px;
+    border-radius: 999px;
+    background-color: #d97757;
+    transition-duration: 300ms;
+}
+.cu-fill.cu-normal   { background-color: #d97757; }
+.cu-fill.cu-warning  { background-color: #e0a458; }
+.cu-fill.cu-critical { background-color: #e5484d; }
+
+.cu-card-reset {
+    color: #8f897e;
+    font-size: 11px;
+}
+
+/* ---- status footer ---- */
+.cu-status {
+    spacing: 3px;
+    padding: 8px 8px 4px 8px;
+}
+.cu-cost {
+    color: #d1cbbf;
+    font-size: 12px;
+    font-weight: 600;
+}
+.cu-updated {
+    color: #7c766b;
+    font-size: 11px;
+}

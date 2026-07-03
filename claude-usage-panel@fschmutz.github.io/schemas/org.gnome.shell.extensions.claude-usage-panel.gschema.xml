@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.claude-usage-panel"
+          path="/org/gnome/shell/extensions/claude-usage-panel/">
+    <key name="refresh-interval" type="i">
+      <default>600</default>
+      <summary>Refresh interval (seconds)</summary>
+      <description>How often to poll the Claude usage endpoint, in seconds.</description>
+      <range min="60" max="3600"/>
+    </key>
+    <key name="panel-mode" type="s">
+      <default>'worst'</default>
+      <summary>Panel display mode</summary>
+      <description>Which limit to show in the top bar: 'worst' or 'session'.</description>
+      <choices>
+        <choice value="worst"/>
+        <choice value="session"/>
+      </choices>
+    </key>
+    <key name="show-cost" type="b">
+      <default>false</default>
+      <summary>Show session cost</summary>
+      <description>Compute session dollar cost locally via ccusage.</description>
+    </key>
+  </schema>
+</schemalist>
