@@ -6,6 +6,8 @@ Unlike other Claude usage extensions, it reads the official endpoint's modern `l
 
 <img src="docs/screenshot.png" alt="Claude Usage Panel dropdown" width="420">
 
+> **macOS?** A native SwiftUI menu-bar version lives in [`macos/`](macos/) — same data layer, same designed dropdown. See [macos/README.md](macos/README.md).
+
 ## Features
 
 - **All plan limits** in one designed dropdown: current session, weekly (all models), and per-model weekly limits (Fable, Opus, …).
