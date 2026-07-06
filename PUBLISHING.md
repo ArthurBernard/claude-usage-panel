@@ -14,6 +14,7 @@ gnome-extensions pack . \
 ```
 
 Submit:
+
 1. Sign in at <https://extensions.gnome.org/upload/> (Google/GitHub).
 2. Upload the `.shell-extension.zip`.
 3. Wait for reviewer approval (manual, usually a few days). Once approved it's

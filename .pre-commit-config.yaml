@@ -1,0 +1,62 @@
+# Pre-commit hooks for claude-usage-panel.
+# Install:  pipx install pre-commit && pre-commit install
+# Run all:  pre-commit run --all-files
+minimum_pre_commit_version: "3.5.0"
+
+repos:
+  # Generic hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=512]
+      - id: check-json
+      - id: check-xml
+      - id: check-yaml
+
+  # Secret scanning — never commit an API key or credential
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  # JavaScript (GNOME Shell / GJS)
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.15.0
+    hooks:
+      - id: eslint
+        files: \.js$
+        args: [--max-warnings=0]
+        additional_dependencies:
+          - eslint@9.15.0
+
+  # Shell scripts
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.10.0-2
+    hooks:
+      - id: shfmt
+        args: [-i, "4", -ci]
+
+  # Markdown
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.42.0
+    hooks:
+      - id: markdownlint
+
+  # Swift (uses the toolchain's built-in swift-format)
+  - repo: local
+    hooks:
+      - id: swift-format
+        name: swift-format lint
+        language: system
+        entry: swift format lint --strict
+        files: \.swift$

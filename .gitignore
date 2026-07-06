@@ -5,6 +5,9 @@ schemas/gschemas.compiled
 # Packaged bundles
 *.zip
 
+# Node (eslint run locally)
+node_modules/
+
 # Editor / OS noise
 .DS_Store
 *.swp

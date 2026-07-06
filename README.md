@@ -9,6 +9,7 @@ Session, weekly, and **per-model** limits (like **Fable** and **Opus**) — the 
 ![Swift 6.1](https://img.shields.io/badge/Swift-6.1-F05138?logo=swift&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/license-MIT-3DA639)
 ![Read-only](https://img.shields.io/badge/credentials-read--only-2ea44f)
+![pre-commit](https://img.shields.io/badge/pre--commit-enabled-FAB040?logo=pre-commit&logoColor=white)
 
 <img src="docs/screenshot.png" alt="Claude Usage Panel dropdown showing session, weekly, and per-model Fable limits" width="420">
 
@@ -83,7 +84,7 @@ Full details, release build, and login-item setup in [macos/README.md](macos/REA
 Reads the OAuth access token Claude Code already stores in
 `~/.claude/.credentials.json` and calls the official usage endpoint:
 
-```
+```text
 GET https://api.anthropic.com/api/oauth/usage
     authorization: Bearer <token>
     anthropic-beta: oauth-2025-04-20
@@ -110,6 +111,20 @@ Read-only with respect to your credentials. One outbound request per refresh, to
 Anthropic's official API, with your own token. No telemetry, no third parties.
 When cost is enabled it additionally runs `ccusage` locally against your
 `~/.claude/projects/*.jsonl` logs.
+
+## Development
+
+Quality is enforced by [pre-commit](https://pre-commit.com):
+
+```bash
+pipx install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
+
+Hooks: ESLint (GJS), `swift-format` (Swift), shellcheck + shfmt (shell),
+markdownlint (docs), gitleaks (secret scan), plus JSON/XML/whitespace checks.
+CI runs the same set on every push (see `.github/workflows/pre-commit.yml`).
 
 ## License
 
