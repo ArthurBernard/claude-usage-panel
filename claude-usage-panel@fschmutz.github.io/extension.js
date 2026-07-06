@@ -63,7 +63,14 @@ class UsageCard extends St.BoxLayout {
         head.add_child(this._label);
         head.add_child(this._pct);
 
-        const track = new St.Bin({style_class: 'cu-track'});
+        // St.Bin centers its child by default; force START so the fill grows
+        // from the left edge instead of sitting centered in the track.
+        const track = new St.Bin({
+            style_class: 'cu-track',
+            x_align: Clutter.ActorAlign.START,
+            y_align: Clutter.ActorAlign.CENTER,
+            x_expand: false,
+        });
         this._fill = new St.Widget({style_class: 'cu-fill'});
         track.set_child(this._fill);
 
@@ -97,6 +104,8 @@ class ClaudeUsageButton extends PanelMenu.Button {
         this._cards = new Map();
         this._timerId = 0;
         this._lastCost = null;
+        this._refreshing = false;
+        this._destroyed = false;
 
         // Panel button: brand glyph + compact worst-limit readout.
         const box = new St.BoxLayout({style_class: 'cu-panel'});
@@ -176,33 +185,45 @@ class ClaudeUsageButton extends PanelMenu.Button {
     }
 
     async refresh() {
-        const result = await fetchUsage(this._httpSession);
-        if (!result.ok) {
-            this._renderError(result.message);
+        // Skip if a refresh is already in flight (e.g. a slow ccusage call
+        // straddling the next timer tick) — avoids piling up requests.
+        if (this._refreshing)
             return;
-        }
-        this._latest = result.cards;
-        this._renderCards(result.cards);
-        this._renderPanel();
-        this._updatedLabel.text = _('Updated %s').format(this._nowString());
-
-        // Plan label from the raw spend/extra hints, best-effort.
-        const plan = result.raw?.plan_label ?? '';
-        this._planLabel.text = plan;
-
-        if (this._settings.get_boolean('show-cost')) {
-            this._costLabel.visible = true;
-            this._costLabel.text = _('Session cost: computing…');
-            const cost = await fetchActiveCost();
-            if (cost) {
-                this._lastCost = cost;
-                this._costLabel.text = _('Session cost: $%s · %s tokens')
-                    .format(cost.costUSD.toFixed(2), this._compact(cost.tokens));
-            } else {
-                this._costLabel.text = _('Session cost: unavailable (install ccusage)');
+        this._refreshing = true;
+        try {
+            const result = await fetchUsage(this._httpSession);
+            if (this._destroyed)
+                return;
+            if (!result.ok) {
+                this._renderError(result.message);
+                return;
             }
-        } else {
-            this._costLabel.visible = false;
+            this._latest = result.cards;
+            this._renderCards(result.cards);
+            this._renderPanel();
+            this._updatedLabel.text = _('Updated %s').format(this._nowString());
+
+            // Plan label from the raw spend/extra hints, best-effort.
+            this._planLabel.text = result.raw?.plan_label ?? '';
+
+            if (this._settings.get_boolean('show-cost')) {
+                this._costLabel.visible = true;
+                this._costLabel.text = _('Session cost: computing…');
+                const cost = await fetchActiveCost();
+                if (this._destroyed)
+                    return;
+                if (cost) {
+                    this._lastCost = cost;
+                    this._costLabel.text = _('Session cost: $%s · %s tokens')
+                        .format(cost.costUSD.toFixed(2), this._compact(cost.tokens));
+                } else {
+                    this._costLabel.text = _('Session cost: unavailable (install ccusage)');
+                }
+            } else {
+                this._costLabel.visible = false;
+            }
+        } finally {
+            this._refreshing = false;
         }
     }
 
@@ -269,6 +290,7 @@ class ClaudeUsageButton extends PanelMenu.Button {
     }
 
     destroy() {
+        this._destroyed = true;
         if (this._timerId) {
             GLib.Source.remove(this._timerId);
             this._timerId = 0;
