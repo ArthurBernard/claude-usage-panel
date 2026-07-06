@@ -24,6 +24,13 @@ glib-compile-schemas "$DEST/schemas/"
 # shell already knows the extension); otherwise write the enabled-extensions
 # dconf key directly so it loads on the next login regardless.
 enable_extension() {
+    # A global kill switch disables ALL user extensions; without clearing it the
+    # extension is registered but never activates. Turn it off if set.
+    if [ "$(gsettings get org.gnome.shell disable-user-extensions 2>/dev/null)" = "true" ]; then
+        echo "Clearing global 'disable-user-extensions' switch (was blocking all user extensions)."
+        gsettings set org.gnome.shell disable-user-extensions false
+    fi
+
     if gnome-extensions enable "$UUID" 2>/dev/null; then
         echo "Enabled via gnome-extensions."
         return
