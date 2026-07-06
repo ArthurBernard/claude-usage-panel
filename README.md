@@ -24,7 +24,9 @@ including **per-model weekly limits** (Fable, Opus, …) that the others miss.
 ## Features
 
 - **All plan limits** in one designed dropdown: current session, weekly (all models), and per-model weekly limits (Fable, Opus, …).
-- **Severity colors** — normal / warning / **critical**, straight from the API's `severity` field.
+- **Severity colors** — normal / warning / **critical**, straight from the API's `severity` field, reflected in the top-bar glyph too.
+- **Limit-crossing alerts** — a desktop notification when any limit first hits 90% or 100%.
+- **Usage sparkline** — a tiny history graph per limit so you see the trend.
 - **Reset timers** — `Resets in 3h 06m`, `Resets in 4d 2h`.
 - **Compact top-bar readout** — the worst limit (or the current session), e.g. `Fable 100%`.
 - **Optional session cost** — computed locally via [`ccusage`](https://github.com/ryoppippi/ccusage) (the official API exposes no dollar cost on subscription plans).
@@ -34,11 +36,22 @@ including **per-model weekly limits** (Fable, Opus, …) that the others miss.
 
 ## Install — GNOME (Linux)
 
+From source:
+
 ```bash
 git clone https://github.com/fschmutz/claude-usage-panel.git
 cd claude-usage-panel
 ./install.sh
 ```
+
+Or from a packaged release:
+
+```bash
+# download the .shell-extension.zip from the Releases page, then:
+gnome-extensions install --force claude-usage-panel@fschmutz.github.io.shell-extension.zip
+```
+
+(An extensions.gnome.org listing is planned — see [PUBLISHING.md](PUBLISHING.md).)
 
 `install.sh` copies the extension, compiles its schema, clears the global
 `disable-user-extensions` switch if set, and enables it to auto-start on every
