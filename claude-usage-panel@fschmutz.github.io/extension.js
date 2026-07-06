@@ -170,6 +170,24 @@ class ClaudeUsageButton extends PanelMenu.Button {
         const prefsItem = new PopupMenu.PopupImageMenuItem(_('Settings'), 'emblem-system-symbolic');
         prefsItem.connect('activate', () => this._extension.openPreferences());
         this.menu.addMenuItem(prefsItem);
+
+        const quitItem = new PopupMenu.PopupImageMenuItem(_('Quit'), 'application-exit-symbolic');
+        quitItem.connect('activate', () => this._quit());
+        this.menu.addMenuItem(quitItem);
+    }
+
+    // Disable the extension: unloads it now and keeps it off across logins
+    // until re-enabled (gnome-extensions enable … or ./install.sh).
+    _quit() {
+        this.menu.close();
+        try {
+            Gio.Subprocess.new(
+                ['gnome-extensions', 'disable', this._extension.uuid],
+                Gio.SubprocessFlags.NONE
+            );
+        } catch (e) {
+            logError(e, 'claude-usage-panel: failed to disable');
+        }
     }
 
     _restartTimer() {
