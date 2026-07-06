@@ -192,11 +192,3 @@ markdownlint (docs), gitleaks (secret scan), plus JSON/XML/whitespace checks.
 ## License
 
 MIT — see [LICENSE](LICENSE).
-
----
-
-<div align="center"><sub>
-
-Keywords: Claude Code usage monitor · Claude usage GNOME Shell extension · Claude plan limits top bar · macOS menu bar Claude usage · Anthropic usage API · ccusage · Fable / Opus per-model weekly limit · Cursor Admin API spend · Ubuntu GNOME extension · SwiftUI MenuBarExtra
-
-</sub></div>
