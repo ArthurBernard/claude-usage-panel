@@ -1,6 +1,7 @@
 import Foundation
+
 #if canImport(FoundationNetworking)
-import FoundationNetworking // URLSession lives here on Linux
+    import FoundationNetworking  // URLSession lives here on Linux
 #endif
 
 // Data layer: read the local Claude Code OAuth token and query the official
@@ -14,7 +15,7 @@ enum Severity: String {
 struct LimitCard: Identifiable {
     let id: String
     let label: String
-    let percent: Int       // 0...100
+    let percent: Int  // 0...100
     let severity: Severity
     let resetsAt: Date?
     let active: Bool
@@ -33,7 +34,7 @@ enum UsageError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .noToken:     return "No Claude credentials found. Sign in with Claude Code."
+        case .noToken: return "No Claude credentials found. Sign in with Claude Code."
         case .authExpired: return "Claude session expired. Run any Claude Code command to refresh."
         case .http(let s): return "HTTP \(s)"
         case .parse(let m): return m
@@ -55,13 +56,14 @@ enum ClaudeUsage {
     /// login Keychain, so we fall back to that.
     static func readAccessToken() -> String? {
         if let data = try? Data(contentsOf: credentialsURL),
-           let token = tokenFromJSON(data) {
+            let token = tokenFromJSON(data)
+        {
             return token
         }
         #if os(macOS)
-        return tokenFromKeychain()
+            return tokenFromKeychain()
         #else
-        return nil
+            return nil
         #endif
     }
 
@@ -77,26 +79,26 @@ enum ClaudeUsage {
     }
 
     #if os(macOS)
-    /// Claude Code stores its credentials JSON as a generic-password Keychain
-    /// item on macOS. `security find-generic-password -w` prints the secret.
-    private static func tokenFromKeychain() -> String? {
-        for service in ["Claude Code-credentials", "Claude Code", "claude"] {
-            let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: "/usr/bin/security")
-            proc.arguments = ["find-generic-password", "-s", service, "-w"]
-            let out = Pipe()
-            proc.standardOutput = out
-            proc.standardError = Pipe()
-            guard (try? proc.run()) != nil else { continue }
-            let data = out.fileHandleForReading.readDataToEndOfFile()
-            proc.waitUntilExit()
-            guard proc.terminationStatus == 0 else { continue }
-            let raw = String(decoding: data, as: UTF8.self)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            if let token = tokenFromJSON(Data(raw.utf8)) { return token }
+        /// Claude Code stores its credentials JSON as a generic-password Keychain
+        /// item on macOS. `security find-generic-password -w` prints the secret.
+        private static func tokenFromKeychain() -> String? {
+            for service in ["Claude Code-credentials", "Claude Code", "claude"] {
+                let proc = Process()
+                proc.executableURL = URL(fileURLWithPath: "/usr/bin/security")
+                proc.arguments = ["find-generic-password", "-s", service, "-w"]
+                let out = Pipe()
+                proc.standardOutput = out
+                proc.standardError = Pipe()
+                guard (try? proc.run()) != nil else { continue }
+                let data = out.fileHandleForReading.readDataToEndOfFile()
+                proc.waitUntilExit()
+                guard proc.terminationStatus == 0 else { continue }
+                let raw = String(decoding: data, as: UTF8.self)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if let token = tokenFromJSON(Data(raw.utf8)) { return token }
+            }
+            return nil
         }
-        return nil
-    }
     #endif
 
     private static let kindLabels: [String: String] = [
@@ -129,7 +131,8 @@ enum ClaudeUsage {
                 let scope = entry["scope"] as? [String: Any]
                 let model = (scope?["model"] as? [String: Any])?["display_name"] as? String
                 if let model { label += " · \(model)" }
-                let pct = max(0, min(100, Int((entry["percent"] as? NSNumber)?.doubleValue.rounded() ?? 0)))
+                let pct = max(
+                    0, min(100, Int((entry["percent"] as? NSNumber)?.doubleValue.rounded() ?? 0)))
                 let sev = Severity(rawValue: entry["severity"] as? String ?? "normal") ?? .normal
                 return LimitCard(
                     id: kind + (model.map { ":\($0)" } ?? ""),
@@ -151,10 +154,13 @@ enum ClaudeUsage {
         var cards: [LimitCard] = []
         func legacy(_ key: String, _ label: String, active: Bool) {
             guard let obj = payload[key] as? [String: Any],
-                  let util = (obj["utilization"] as? NSNumber)?.doubleValue else { return }
-            cards.append(LimitCard(
-                id: key, label: label, percent: max(0, min(100, Int(util.rounded()))),
-                severity: .normal, resetsAt: parseDate(obj["resets_at"] as? String), active: active))
+                let util = (obj["utilization"] as? NSNumber)?.doubleValue
+            else { return }
+            cards.append(
+                LimitCard(
+                    id: key, label: label, percent: max(0, min(100, Int(util.rounded()))),
+                    severity: .normal, resetsAt: parseDate(obj["resets_at"] as? String),
+                    active: active))
         }
         legacy("five_hour", "Current session", active: true)
         legacy("seven_day", "Weekly · all models", active: false)

@@ -29,9 +29,11 @@ enum Cost {
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         proc.arguments = argv
         var env = ProcessInfo.processInfo.environment
-        let extra = ["/opt/homebrew/bin", "/usr/local/bin",
-                     NSHomeDirectory() + "/.volta/bin",
-                     NSHomeDirectory() + "/.npm-global/bin"]
+        let extra = [
+            "/opt/homebrew/bin", "/usr/local/bin",
+            NSHomeDirectory() + "/.volta/bin",
+            NSHomeDirectory() + "/.npm-global/bin",
+        ]
         env["PATH"] = (extra + [env["PATH"] ?? "/usr/bin:/bin"]).joined(separator: ":")
         proc.environment = env
 
@@ -47,9 +49,9 @@ enum Cost {
         let data = out.fileHandleForReading.readDataToEndOfFile()
         proc.waitUntilExit()
         guard proc.terminationStatus == 0,
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let blocks = json["blocks"] as? [[String: Any]],
-              let first = blocks.first
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let blocks = json["blocks"] as? [[String: Any]],
+            let first = blocks.first
         else { return nil }
 
         let cost = (first["costUSD"] as? NSNumber)?.doubleValue ?? 0

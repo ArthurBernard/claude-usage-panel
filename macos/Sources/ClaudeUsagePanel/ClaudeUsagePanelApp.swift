@@ -1,17 +1,18 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 // MARK: - Palette (matches the GNOME extension)
 
-private extension Color {
-    static let cuAccent   = Color(red: 0xd9/255, green: 0x77/255, blue: 0x57/255) // Claude orange
-    static let cuWarning  = Color(red: 0xe0/255, green: 0xa4/255, blue: 0x58/255)
-    static let cuCritical = Color(red: 0xe5/255, green: 0x48/255, blue: 0x4d/255)
+extension Color {
+    // Claude orange
+    fileprivate static let cuAccent = Color(red: 0xd9 / 255, green: 0x77 / 255, blue: 0x57 / 255)
+    fileprivate static let cuWarning = Color(red: 0xe0 / 255, green: 0xa4 / 255, blue: 0x58 / 255)
+    fileprivate static let cuCritical = Color(red: 0xe5 / 255, green: 0x48 / 255, blue: 0x4d / 255)
 
-    static func severity(_ s: Severity) -> Color {
+    fileprivate static func severity(_ s: Severity) -> Color {
         switch s {
-        case .normal:   return .cuAccent
-        case .warning:  return .cuWarning
+        case .normal: return .cuAccent
+        case .warning: return .cuWarning
         case .critical: return .cuCritical
         }
     }
@@ -28,10 +29,16 @@ final class UsageModel: ObservableObject {
     @Published var updated: String = ""
 
     @Published var refreshMinutes: Int {
-        didSet { UserDefaults.standard.set(refreshMinutes, forKey: "refreshMinutes"); restart() }
+        didSet {
+            UserDefaults.standard.set(refreshMinutes, forKey: "refreshMinutes")
+            restart()
+        }
     }
     @Published var showCost: Bool {
-        didSet { UserDefaults.standard.set(showCost, forKey: "showCost"); Task { await refresh() } }
+        didSet {
+            UserDefaults.standard.set(showCost, forKey: "showCost")
+            Task { await refresh() }
+        }
     }
     @Published var alertsEnabled: Bool {
         didSet { UserDefaults.standard.set(alertsEnabled, forKey: "alertsEnabled") }
@@ -45,7 +52,7 @@ final class UsageModel: ObservableObject {
         refreshMinutes = UserDefaults.standard.object(forKey: "refreshMinutes") as? Int ?? 10
         showCost = UserDefaults.standard.bool(forKey: "showCost")
         alertsEnabled = UserDefaults.standard.object(forKey: "alertsEnabled") as? Bool ?? true
-        restart() // didSet does not fire from init, so start the loop explicitly
+        restart()  // didSet does not fire from init, so start the loop explicitly
     }
 
     private func restart() {
@@ -72,7 +79,10 @@ final class UsageModel: ObservableObject {
             errorText = error.localizedDescription
         }
 
-        guard showCost else { costText = nil; return }
+        guard showCost else {
+            costText = nil
+            return
+        }
         costText = "computing…"
         if let cost = await Cost.fetchActiveCost() {
             costText = String(format: "$%.2f · %@ tokens", cost.costUSD, Self.compact(cost.tokens))
@@ -109,7 +119,9 @@ final class UsageModel: ObservableObject {
         let esc = { (s: String) in s.replacingOccurrences(of: "\"", with: "\\\"") }
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        proc.arguments = ["-e", "display notification \"\(esc(body))\" with title \"\(esc(title))\""]
+        proc.arguments = [
+            "-e", "display notification \"\(esc(body))\" with title \"\(esc(title))\"",
+        ]
         try? proc.run()
     }
 
@@ -124,8 +136,8 @@ final class UsageModel: ObservableObject {
     private func dot(_ s: Severity) -> String {
         switch s {
         case .critical: return "🔴"
-        case .warning:  return "🟠"
-        case .normal:   return "🟢"
+        case .warning: return "🟠"
+        case .normal: return "🟢"
         }
     }
 
@@ -134,7 +146,9 @@ final class UsageModel: ObservableObject {
         guard let worst = cards.max(by: { $0.percent < $1.percent }) else {
             return errorText == nil ? "⚪️ …" : "⚪️ ?"
         }
-        let short = worst.label.components(separatedBy: "·").last?.trimmingCharacters(in: .whitespaces) ?? worst.label
+        let short =
+            worst.label.components(separatedBy: "·").last?.trimmingCharacters(in: .whitespaces)
+            ?? worst.label
         return "\(dot(worst.severity)) \(short) \(worst.percent)%"
     }
 
@@ -145,7 +159,9 @@ final class UsageModel: ObservableObject {
     }
 
     static let timeFormatter: DateFormatter = {
-        let f = DateFormatter(); f.dateFormat = "HH:mm"; return f
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
     }()
 }
 
@@ -155,7 +171,9 @@ private func resetsText(_ date: Date?) -> String {
     guard let date else { return "" }
     let delta = Int(date.timeIntervalSinceNow)
     if delta <= 0 { return "Resetting…" }
-    let d = delta / 86400, h = (delta % 86400) / 3600, m = (delta % 3600) / 60
+    let d = delta / 86400
+    let h = (delta % 86400) / 3600
+    let m = (delta % 3600) / 60
     if d > 0 { return "Resets in \(d)d \(h)h" }
     if h > 0 { return String(format: "Resets in %dh %02dm", h, m) }
     return "Resets in \(m)m"
@@ -205,8 +223,10 @@ private struct CardView: View {
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 14).fill(Color.primary.opacity(0.05)))
-        .overlay(RoundedRectangle(cornerRadius: 14)
-            .stroke(card.severity == .critical ? color.opacity(0.35) : Color.primary.opacity(0.08)))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(
+                    card.severity == .critical ? color.opacity(0.35) : Color.primary.opacity(0.08)))
     }
 }
 
@@ -219,7 +239,8 @@ struct PopupView: View {
                 Text("Claude usage").font(.system(size: 15, weight: .bold))
                 Spacer()
                 if let plan = model.planLabel, !plan.isEmpty {
-                    Text(plan).font(.system(size: 12, weight: .semibold)).foregroundColor(.secondary)
+                    Text(plan).font(.system(size: 12, weight: .semibold)).foregroundColor(
+                        .secondary)
                 }
             }
 
@@ -239,7 +260,8 @@ struct PopupView: View {
 
             HStack {
                 Toggle("Cost", isOn: $model.showCost).toggleStyle(.checkbox).font(.system(size: 12))
-                Toggle("Alerts", isOn: $model.alertsEnabled).toggleStyle(.checkbox).font(.system(size: 12))
+                Toggle("Alerts", isOn: $model.alertsEnabled).toggleStyle(.checkbox).font(
+                    .system(size: 12))
                 Spacer()
                 Text("Refresh").font(.system(size: 12)).foregroundColor(.secondary)
                 Picker("", selection: $model.refreshMinutes) {
@@ -248,9 +270,15 @@ struct PopupView: View {
             }
 
             HStack {
-                Button { Task { await model.refresh() } } label: { Label("Refresh now", systemImage: "arrow.clockwise") }
+                Button {
+                    Task { await model.refresh() }
+                } label: {
+                    Label("Refresh now", systemImage: "arrow.clockwise")
+                }
                 Spacer()
-                Button(role: .destructive) { NSApplication.shared.terminate(nil) } label: {
+                Button(role: .destructive) {
+                    NSApplication.shared.terminate(nil)
+                } label: {
                     Label("Quit", systemImage: "power")
                 }
             }
@@ -266,7 +294,7 @@ struct PopupView: View {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory) // menu-bar only, no Dock icon
+        NSApp.setActivationPolicy(.accessory)  // menu-bar only, no Dock icon
     }
 }
 
