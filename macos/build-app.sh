@@ -25,8 +25,8 @@ cat > "$BUNDLE/Contents/Info.plist" <<PLIST
   <key>CFBundleName</key><string>Claude Usage Panel</string>
   <key>CFBundleDisplayName</key><string>Claude Usage Panel</string>
   <key>CFBundleIdentifier</key><string>io.github.fschmutz.claude-usage-panel</string>
-  <key>CFBundleVersion</key><string>1.2.0</string>
-  <key>CFBundleShortVersionString</key><string>1.2.0</string>
+  <key>CFBundleVersion</key><string>1.3.0</string>
+  <key>CFBundleShortVersionString</key><string>1.3.0</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleExecutable</key><string>$APP</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>

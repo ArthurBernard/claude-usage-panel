@@ -43,6 +43,20 @@ final class UsageModel: ObservableObject {
     @Published var alertsEnabled: Bool {
         didSet { UserDefaults.standard.set(alertsEnabled, forKey: "alertsEnabled") }
     }
+    @Published var cursorEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(cursorEnabled, forKey: "cursorEnabled")
+            Task { await refresh() }
+        }
+    }
+    @Published var cursorApiKey: String {
+        didSet {
+            UserDefaults.standard.set(cursorApiKey, forKey: "cursorApiKey")
+            Task { await refresh() }
+        }
+    }
+    @Published var cursorSummary: CursorSummary?
+    @Published var cursorError: String?
     @Published private(set) var history: [String: [Int]] = [:]
     private var alertFired: [String: Int] = [:]
 
@@ -52,6 +66,8 @@ final class UsageModel: ObservableObject {
         refreshMinutes = UserDefaults.standard.object(forKey: "refreshMinutes") as? Int ?? 10
         showCost = UserDefaults.standard.bool(forKey: "showCost")
         alertsEnabled = UserDefaults.standard.object(forKey: "alertsEnabled") as? Bool ?? true
+        cursorEnabled = UserDefaults.standard.bool(forKey: "cursorEnabled")
+        cursorApiKey = UserDefaults.standard.string(forKey: "cursorApiKey") ?? ""
         restart()  // didSet does not fire from init, so start the loop explicitly
     }
 
@@ -88,6 +104,23 @@ final class UsageModel: ObservableObject {
             costText = String(format: "$%.2f · %@ tokens", cost.costUSD, Self.compact(cost.tokens))
         } else {
             costText = "unavailable (install ccusage)"
+        }
+
+        await refreshCursor()
+    }
+
+    private func refreshCursor() async {
+        guard cursorEnabled, !cursorApiKey.isEmpty else {
+            cursorSummary = nil
+            cursorError = nil
+            return
+        }
+        do {
+            cursorSummary = try await CursorAPI.fetch(key: cursorApiKey)
+            cursorError = nil
+        } catch {
+            cursorSummary = nil
+            cursorError = error.localizedDescription
         }
     }
 
@@ -256,6 +289,10 @@ struct PopupView: View {
             }
             Text("Updated \(model.updated)").font(.system(size: 11)).foregroundColor(.secondary)
 
+            if model.cursorEnabled {
+                CursorSectionView(model: model)
+            }
+
             Divider()
 
             HStack {
@@ -275,6 +312,19 @@ struct PopupView: View {
                 } label: {
                     Label("Refresh now", systemImage: "arrow.clockwise")
                 }
+                if #available(macOS 14.0, *) {
+                    SettingsLink {
+                        Label("Settings…", systemImage: "gearshape")
+                    }
+                } else {
+                    Button {
+                        NSApp.activate(ignoringOtherApps: true)
+                        NSApp.sendAction(
+                            Selector(("showPreferencesWindow:")), to: nil, from: nil)
+                    } label: {
+                        Label("Settings…", systemImage: "gearshape")
+                    }
+                }
                 Spacer()
                 Button(role: .destructive) {
                     NSApplication.shared.terminate(nil)
@@ -287,6 +337,60 @@ struct PopupView: View {
         }
         .padding(14)
         .frame(width: 340)
+    }
+}
+
+// Cursor spend block in the dropdown (shown when enabled).
+private struct CursorSectionView: View {
+    @ObservedObject var model: UsageModel
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("Cursor").font(.system(size: 13, weight: .bold))
+            if let s = model.cursorSummary {
+                Text(String(format: "This cycle: $%.2f · %d members", s.cycleUSD, s.members))
+                    .font(.system(size: 12, weight: .semibold))
+                if let today = s.todayUSD {
+                    Text(String(format: "Today: $%.2f", today))
+                        .font(.system(size: 11)).foregroundColor(.secondary)
+                }
+                if let top = s.top {
+                    Text(String(format: "Top: %@ $%.2f", top.email, top.usd))
+                        .font(.system(size: 11)).foregroundColor(.secondary)
+                }
+            } else if let err = model.cursorError {
+                Text("Cursor: \(err)").font(.system(size: 12)).foregroundColor(.secondary)
+            } else {
+                Text("Loading…").font(.system(size: 12)).foregroundColor(.secondary)
+            }
+        }
+    }
+}
+
+// MARK: - Settings window
+
+struct SettingsView: View {
+    @ObservedObject var model: UsageModel
+
+    var body: some View {
+        Form {
+            Section("General") {
+                Picker("Refresh interval", selection: $model.refreshMinutes) {
+                    ForEach([1, 5, 10, 15, 30, 60], id: \.self) { Text("\($0) min").tag($0) }
+                }
+                Toggle("Limit-crossing alerts (90% / 100%)", isOn: $model.alertsEnabled)
+                Toggle("Show session cost (ccusage)", isOn: $model.showCost)
+            }
+            Section("Cursor (optional)") {
+                Toggle("Show Cursor team spend", isOn: $model.cursorEnabled)
+                SecureField("Cursor Admin API key", text: $model.cursorApiKey)
+                    .disabled(!model.cursorEnabled)
+                Text("Create a key at cursor.com → your team → Settings → Admin API.")
+                    .font(.footnote).foregroundColor(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: 420)
+        .padding()
     }
 }
 
@@ -310,5 +414,9 @@ struct ClaudeUsagePanelApp: App {
             Text(model.titleText)
         }
         .menuBarExtraStyle(.window)
+
+        Settings {
+            SettingsView(model: model)
+        }
     }
 }

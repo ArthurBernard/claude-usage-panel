@@ -12,6 +12,13 @@ file), so the app reads it via `security find-generic-password`; it falls back
 to `~/.claude/.credentials.json` if present. The first read may prompt for
 Keychain access — click **Always Allow**.
 
+## Settings
+
+Quick toggles (Cost, Alerts, Refresh) sit in the dropdown. A full **Settings**
+window (⌘, or the dropdown's **Settings…** button) holds every option,
+including the optional **Cursor** team-spend section (toggle + Admin API key).
+Preferences persist via `UserDefaults`.
+
 ## Requirements
 
 - macOS 13 Ventura or later

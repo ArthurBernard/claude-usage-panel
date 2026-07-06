@@ -120,7 +120,8 @@ cask template are in [macos/README.md](macos/README.md) and [PUBLISHING.md](PUBL
 
 GNOME: open via the dropdown's **Settings**, or
 `gnome-extensions prefs claude-usage-panel@fschmutz.github.io`.
-macOS: toggles live directly in the dropdown.
+macOS: quick toggles live in the dropdown, and a full **Settings** window
+(⌘, or the dropdown's **Settings…**) holds the same options including Cursor.
 
 ## How it works
 
