@@ -93,6 +93,18 @@
     font-size: 11px;
 }
 
+/* ---- optional Cursor section ---- */
+.cu-cursor {
+    spacing: 3px;
+    padding: 8px 8px 4px 8px;
+}
+.cu-section-title {
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    padding-bottom: 2px;
+}
+
 /* ---- status footer ---- */
 .cu-status {
     spacing: 3px;

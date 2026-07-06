@@ -22,5 +22,15 @@
       <summary>Show session cost</summary>
       <description>Compute session dollar cost locally via ccusage.</description>
     </key>
+    <key name="cursor-enabled" type="b">
+      <default>false</default>
+      <summary>Show Cursor usage</summary>
+      <description>Add a Cursor team-spend section using the Cursor Admin API.</description>
+    </key>
+    <key name="cursor-api-key" type="s">
+      <default>''</default>
+      <summary>Cursor Admin API key</summary>
+      <description>Team Admin API key (Basic auth) used to read Cursor spend. Stored locally in dconf.</description>
+    </key>
   </schema>
 </schemalist>

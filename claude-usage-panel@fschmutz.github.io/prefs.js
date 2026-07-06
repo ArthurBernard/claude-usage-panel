@@ -52,6 +52,23 @@ export default class ClaudeUsagePanelPrefs extends ExtensionPreferences {
         cost.add(costRow);
         page.add(cost);
 
+        const cursor = new Adw.PreferencesGroup({
+            title: _('Cursor (optional)'),
+            description: _('Show Cursor team spend using the Cursor Admin API. Create a key at cursor.com → team → Settings → Admin API. Stored locally in dconf.'),
+        });
+        const cursorRow = new Adw.SwitchRow({
+            title: _('Show Cursor usage'),
+            subtitle: _('Adds a Cursor spend section to the dropdown'),
+        });
+        settings.bind('cursor-enabled', cursorRow, 'active', 0);
+        cursor.add(cursorRow);
+
+        const keyRow = new Adw.PasswordEntryRow({ title: _('Cursor Admin API key') });
+        keyRow.text = settings.get_string('cursor-api-key');
+        keyRow.connect('changed', row => settings.set_string('cursor-api-key', row.text));
+        cursor.add(keyRow);
+        page.add(cursor);
+
         window.add(page);
     }
 }

@@ -16,6 +16,7 @@ import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/ex
 
 import {fetchUsage} from './lib/claudeUsage.js';
 import {fetchActiveCost} from './lib/cost.js';
+import {fetchCursor} from './lib/cursorUsage.js';
 
 const TRACK_WIDTH = 300; // px, must match .cu-track min-width in stylesheet.css
 
@@ -125,6 +126,8 @@ class ClaudeUsageButton extends PanelMenu.Button {
             'changed::refresh-interval', () => this._restartTimer(),
             'changed::show-cost', () => this.refresh(),
             'changed::panel-mode', () => this._renderPanel(),
+            'changed::cursor-enabled', () => this.refresh(),
+            'changed::cursor-api-key', () => this.refresh(),
             this
         );
 
@@ -160,6 +163,21 @@ class ClaudeUsageButton extends PanelMenu.Button {
         this._statusBox.add_child(this._updatedLabel);
         this._statusItem.add_child(this._statusBox);
         this.menu.addMenuItem(this._statusItem);
+
+        // Optional Cursor section (hidden unless enabled + key set)
+        this._cursorItem = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
+        const cursorBox = new St.BoxLayout({vertical: true, x_expand: true, style_class: 'cu-cursor'});
+        this._cursorTitle = new St.Label({text: 'Cursor', style_class: 'cu-section-title'});
+        this._cursorCycle = new St.Label({text: '', style_class: 'cu-cost'});
+        this._cursorToday = new St.Label({text: '', style_class: 'cu-updated'});
+        this._cursorTop = new St.Label({text: '', style_class: 'cu-updated'});
+        cursorBox.add_child(this._cursorTitle);
+        cursorBox.add_child(this._cursorCycle);
+        cursorBox.add_child(this._cursorToday);
+        cursorBox.add_child(this._cursorTop);
+        this._cursorItem.add_child(cursorBox);
+        this.menu.addMenuItem(this._cursorItem);
+        this._cursorItem.visible = false;
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
@@ -240,8 +258,39 @@ class ClaudeUsageButton extends PanelMenu.Button {
             } else {
                 this._costLabel.visible = false;
             }
+
+            await this._refreshCursor();
         } finally {
             this._refreshing = false;
+        }
+    }
+
+    async _refreshCursor() {
+        const key = this._settings.get_string('cursor-api-key');
+        if (!this._settings.get_boolean('cursor-enabled') || !key) {
+            this._cursorItem.visible = false;
+            return;
+        }
+        this._cursorItem.visible = true;
+        this._cursorCycle.text = _('Loading…');
+        this._cursorToday.text = '';
+        this._cursorTop.text = '';
+        try {
+            const c = await fetchCursor(this._httpSession, key);
+            if (this._destroyed)
+                return;
+            this._cursorCycle.text = _('This cycle: $%s · %d members')
+                .format(c.cycleUSD.toFixed(2), c.members);
+            this._cursorToday.text = c.todayUSD === null
+                ? '' : _('Today: $%s').format(c.todayUSD.toFixed(2));
+            this._cursorTop.text = c.topSpender
+                ? _('Top: %s $%s').format(c.topSpender.email, c.topSpender.usd.toFixed(2)) : '';
+        } catch (e) {
+            if (this._destroyed)
+                return;
+            this._cursorCycle.text = _('Cursor: %s').format(e.message);
+            this._cursorToday.text = '';
+            this._cursorTop.text = '';
         }
     }
 
