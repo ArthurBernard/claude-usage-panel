@@ -33,12 +33,18 @@ final class UsageModel: ObservableObject {
     @Published var showCost: Bool {
         didSet { UserDefaults.standard.set(showCost, forKey: "showCost"); Task { await refresh() } }
     }
+    @Published var alertsEnabled: Bool {
+        didSet { UserDefaults.standard.set(alertsEnabled, forKey: "alertsEnabled") }
+    }
+    @Published private(set) var history: [String: [Int]] = [:]
+    private var alertFired: [String: Int] = [:]
 
     private var loopTask: Task<Void, Never>?
 
     init() {
         refreshMinutes = UserDefaults.standard.object(forKey: "refreshMinutes") as? Int ?? 10
         showCost = UserDefaults.standard.bool(forKey: "showCost")
+        alertsEnabled = UserDefaults.standard.object(forKey: "alertsEnabled") as? Bool ?? true
         restart() // didSet does not fire from init, so start the loop explicitly
     }
 
@@ -60,6 +66,8 @@ final class UsageModel: ObservableObject {
             planLabel = result.planLabel
             errorText = nil
             updated = Self.timeFormatter.string(from: Date())
+            recordHistory(result.cards)
+            checkAlerts(result.cards)
         } catch {
             errorText = error.localizedDescription
         }
@@ -73,13 +81,61 @@ final class UsageModel: ObservableObject {
         }
     }
 
+    private func recordHistory(_ cards: [LimitCard]) {
+        for c in cards {
+            var h = history[c.id] ?? []
+            h.append(c.percent)
+            if h.count > 12 { h.removeFirst(h.count - 12) }
+            history[c.id] = h
+        }
+    }
+
+    // Notify on first crossing of 90% / 100%, with hysteresis to re-arm.
+    private func checkAlerts(_ cards: [LimitCard]) {
+        guard alertsEnabled else { return }
+        for c in cards {
+            let prev = alertFired[c.id] ?? 0
+            let threshold = c.percent >= 100 ? 100 : (c.percent >= 90 ? 90 : 0)
+            if threshold > prev {
+                alertFired[c.id] = threshold
+                notify("Claude usage", "\(c.label) reached \(threshold)%")
+            } else if threshold < prev && c.percent < 85 {
+                alertFired[c.id] = threshold
+            }
+        }
+    }
+
+    private func notify(_ title: String, _ body: String) {
+        let esc = { (s: String) in s.replacingOccurrences(of: "\"", with: "\\\"") }
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        proc.arguments = ["-e", "display notification \"\(esc(body))\" with title \"\(esc(title))\""]
+        try? proc.run()
+    }
+
+    func spark(for id: String) -> String {
+        let h = history[id] ?? []
+        guard h.count >= 2 else { return "" }
+        let blocks = Array(" ▁▂▃▄▅▆▇█")
+        return String(h.map { blocks[max(0, min(8, Int((Double($0) / 100 * 8).rounded())))] })
+    }
+
+    /// Severity dot for the menu-bar title (renders in color as an emoji).
+    private func dot(_ s: Severity) -> String {
+        switch s {
+        case .critical: return "🔴"
+        case .warning:  return "🟠"
+        case .normal:   return "🟢"
+        }
+    }
+
     /// Worst (highest %) limit, for the menu-bar title.
     var titleText: String {
         guard let worst = cards.max(by: { $0.percent < $1.percent }) else {
-            return errorText == nil ? "✳ …" : "✳ ?"
+            return errorText == nil ? "⚪️ …" : "⚪️ ?"
         }
         let short = worst.label.components(separatedBy: "·").last?.trimmingCharacters(in: .whitespaces) ?? worst.label
-        return "✳ \(short) \(worst.percent)%"
+        return "\(dot(worst.severity)) \(short) \(worst.percent)%"
     }
 
     static func compact(_ n: Int) -> String {
@@ -124,6 +180,7 @@ private struct ProgressBar: View {
 
 private struct CardView: View {
     let card: LimitCard
+    let spark: String
     var body: some View {
         let color = Color.severity(card.severity)
         VStack(alignment: .leading, spacing: 6) {
@@ -136,8 +193,15 @@ private struct CardView: View {
                     .foregroundColor(color).monospacedDigit()
             }
             ProgressBar(percent: card.percent, color: color)
-            Text(resetsText(card.resetsAt)).font(.system(size: 11))
-                .foregroundColor(.secondary)
+            HStack {
+                Text(resetsText(card.resetsAt)).font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                Spacer()
+                if !spark.isEmpty {
+                    Text(spark).font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.secondary)
+                }
+            }
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 14).fill(Color.primary.opacity(0.05)))
@@ -163,7 +227,7 @@ struct PopupView: View {
                 Text(err).font(.system(size: 12)).foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
-                ForEach(model.cards) { CardView(card: $0) }
+                ForEach(model.cards) { CardView(card: $0, spark: model.spark(for: $0.id)) }
             }
 
             if let cost = model.costText {
@@ -175,6 +239,7 @@ struct PopupView: View {
 
             HStack {
                 Toggle("Cost", isOn: $model.showCost).toggleStyle(.checkbox).font(.system(size: 12))
+                Toggle("Alerts", isOn: $model.alertsEnabled).toggleStyle(.checkbox).font(.system(size: 12))
                 Spacer()
                 Text("Refresh").font(.system(size: 12)).foregroundColor(.secondary)
                 Picker("", selection: $model.refreshMinutes) {
