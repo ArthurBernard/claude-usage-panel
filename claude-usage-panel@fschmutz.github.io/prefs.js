@@ -38,6 +38,13 @@ export default class ClaudeUsagePanelPrefs extends ExtensionPreferences {
             settings.set_string('panel-mode', row.get_selected() === 1 ? 'session' : 'worst'));
         behavior.add(modeRow);
 
+        const alertsRow = new Adw.SwitchRow({
+            title: _('Limit-crossing alerts'),
+            subtitle: _('Notify when a limit reaches 90% or 100%'),
+        });
+        settings.bind('alerts-enabled', alertsRow, 'active', 0);
+        behavior.add(alertsRow);
+
         page.add(behavior);
 
         const cost = new Adw.PreferencesGroup({

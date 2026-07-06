@@ -28,6 +28,18 @@ function severityClass(severity) {
     return 'cu-normal';
 }
 
+const SPARK_BLOCKS = ' ▁▂▃▄▅▆▇█';
+
+// Render a history array (percentages) as a unicode sparkline.
+function sparkline(history) {
+    if (!history || history.length < 2)
+        return '';
+    return history.map(p => {
+        const i = Math.max(0, Math.min(8, Math.round((p / 100) * 8)));
+        return SPARK_BLOCKS[i];
+    }).join('');
+}
+
 // "Resets in 3h 06m" / "Resets in 4d 2h"
 function formatResets(iso) {
     if (!iso)
@@ -76,13 +88,15 @@ class UsageCard extends St.BoxLayout {
         track.set_child(this._fill);
 
         this._reset = new St.Label({style_class: 'cu-card-reset'});
+        this._spark = new St.Label({style_class: 'cu-spark'});
 
         this.add_child(head);
         this.add_child(track);
         this.add_child(this._reset);
+        this.add_child(this._spark);
     }
 
-    update(card) {
+    update(card, history) {
         const sev = severityClass(card.severity);
         this._label.text = card.label + (card.active ? '  ●' : '');
         this._pct.text = `${card.percent}%`;
@@ -91,6 +105,9 @@ class UsageCard extends St.BoxLayout {
         this._fill.style_class = `cu-fill ${sev}`;
         this._fill.style = `width: ${px}px;`;
         this._reset.text = formatResets(card.resetsAt);
+        const spark = sparkline(history);
+        this._spark.text = spark;
+        this._spark.visible = spark.length > 0;
     }
 });
 
@@ -107,6 +124,8 @@ class ClaudeUsageButton extends PanelMenu.Button {
         this._lastCost = null;
         this._refreshing = false;
         this._destroyed = false;
+        this._history = new Map();     // limit id -> [percent, …] (max 12)
+        this._alertFired = new Map();  // limit id -> highest threshold already alerted
 
         // Panel button: brand glyph + compact worst-limit readout.
         const box = new St.BoxLayout({style_class: 'cu-panel'});
@@ -294,17 +313,44 @@ class ClaudeUsageButton extends PanelMenu.Button {
         }
     }
 
+    // Notify when a limit first crosses 90% or 100% (with hysteresis so a
+    // fresh window can alert again after the usage drops back down).
+    _checkAlerts(cards) {
+        if (!this._settings.get_boolean('alerts-enabled'))
+            return;
+        for (const card of cards) {
+            const prev = this._alertFired.get(card.key) ?? 0;
+            const threshold = card.percent >= 100 ? 100 : (card.percent >= 90 ? 90 : 0);
+            if (threshold > prev) {
+                this._alertFired.set(card.key, threshold);
+                const tail = card.resetsAt ? ` — ${formatResets(card.resetsAt)}` : '';
+                Main.notify(_('Claude usage'),
+                    _('%s reached %d%%').format(card.label, threshold) + tail);
+            } else if (threshold < prev && card.percent < 85) {
+                this._alertFired.set(card.key, threshold); // re-arm for the next cycle
+            }
+        }
+    }
+
     _renderCards(cards) {
+        this._checkAlerts(cards);
         const seen = new Set();
         for (const card of cards) {
             seen.add(card.key);
+            // append to per-limit history (kept for the sparkline)
+            const hist = this._history.get(card.key) ?? [];
+            hist.push(card.percent);
+            if (hist.length > 12)
+                hist.shift();
+            this._history.set(card.key, hist);
+
             let widget = this._cards.get(card.key);
             if (!widget) {
                 widget = new UsageCard();
                 this._cards.set(card.key, widget);
                 this._cardsBox.add_child(widget);
             }
-            widget.update(card);
+            widget.update(card, hist);
         }
         // Drop cards that disappeared.
         for (const [key, widget] of this._cards) {

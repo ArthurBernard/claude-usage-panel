@@ -22,6 +22,11 @@
       <summary>Show session cost</summary>
       <description>Compute session dollar cost locally via ccusage.</description>
     </key>
+    <key name="alerts-enabled" type="b">
+      <default>true</default>
+      <summary>Limit-crossing alerts</summary>
+      <description>Notify when a limit crosses 90% or 100%.</description>
+    </key>
     <key name="cursor-enabled" type="b">
       <default>false</default>
       <summary>Show Cursor usage</summary>
