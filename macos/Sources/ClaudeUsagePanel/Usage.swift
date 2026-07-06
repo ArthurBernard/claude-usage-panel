@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking // URLSession lives here on Linux
+#endif
 
 // Data layer: read the local Claude Code OAuth token and query the official
 // usage endpoint. Read-only — we never write back to the credentials file.
