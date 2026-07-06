@@ -6,8 +6,11 @@ macOS menu bar, with a designed dropdown, severity colors, reset timers, and
 optional session cost via `ccusage`.
 
 Same data source as the GNOME version — reads the local Claude Code OAuth token
-from `~/.claude/.credentials.json` (read-only) and calls
-`https://api.anthropic.com/api/oauth/usage`.
+(read-only) and calls `https://api.anthropic.com/api/oauth/usage`. On macOS the
+token lives in the **login Keychain** (Claude Code stores it there, not in a
+file), so the app reads it via `security find-generic-password`; it falls back
+to `~/.claude/.credentials.json` if present. The first read may prompt for
+Keychain access — click **Always Allow**.
 
 ## Requirements
 

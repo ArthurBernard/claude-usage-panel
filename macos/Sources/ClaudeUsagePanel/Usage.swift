@@ -50,18 +50,54 @@ enum ClaudeUsage {
             .appendingPathComponent(".claude/.credentials.json")
     }
 
-    /// Read the OAuth access token from ~/.claude/.credentials.json.
+    /// Read the OAuth access token. On Linux it lives in
+    /// ~/.claude/.credentials.json; on macOS, Claude Code stores it in the
+    /// login Keychain, so we fall back to that.
     static func readAccessToken() -> String? {
-        guard let data = try? Data(contentsOf: credentialsURL),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else { return nil }
+        if let data = try? Data(contentsOf: credentialsURL),
+           let token = tokenFromJSON(data) {
+            return token
+        }
+        #if os(macOS)
+        return tokenFromKeychain()
+        #else
+        return nil
+        #endif
+    }
 
+    /// Parse an access token out of the credentials JSON blob (file or Keychain).
+    private static func tokenFromJSON(_ data: Data) -> String? {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
         // Token may sit under `claudeAiOauth` or at the top level.
         let oauth = (json["claudeAiOauth"] as? [String: Any]) ?? json
         return (oauth["accessToken"] as? String)
             ?? (oauth["access_token"] as? String)
             ?? (oauth["token"] as? String)
     }
+
+    #if os(macOS)
+    /// Claude Code stores its credentials JSON as a generic-password Keychain
+    /// item on macOS. `security find-generic-password -w` prints the secret.
+    private static func tokenFromKeychain() -> String? {
+        for service in ["Claude Code-credentials", "Claude Code", "claude"] {
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: "/usr/bin/security")
+            proc.arguments = ["find-generic-password", "-s", service, "-w"]
+            let out = Pipe()
+            proc.standardOutput = out
+            proc.standardError = Pipe()
+            guard (try? proc.run()) != nil else { continue }
+            let data = out.fileHandleForReading.readDataToEndOfFile()
+            proc.waitUntilExit()
+            guard proc.terminationStatus == 0 else { continue }
+            let raw = String(decoding: data, as: UTF8.self)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if let token = tokenFromJSON(Data(raw.utf8)) { return token }
+        }
+        return nil
+    }
+    #endif
 
     private static let kindLabels: [String: String] = [
         "session": "Current session",
