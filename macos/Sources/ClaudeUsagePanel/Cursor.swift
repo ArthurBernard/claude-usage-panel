@@ -1,3 +1,4 @@
+import ClaudeUsageCore
 import Foundation
 
 #if canImport(FoundationNetworking)
@@ -6,22 +7,7 @@ import Foundation
 
 // Optional Cursor layer: query the Cursor Admin API for team spend.
 // Auth is HTTP Basic with the admin API key as the username (empty password).
-// Cursor is usage-based (no fixed % limit), so we surface spend, not a gauge.
-// Mirrors the GNOME extension's lib/cursorUsage.js.
-
-struct CursorTop {
-    let email: String
-    let usd: Double
-}
-
-struct CursorSummary {
-    let cycleUSD: Double
-    let limitUSD: Double
-    let percent: Int?  // % of monthly limit, when the team has one set
-    let members: Int
-    let todayUSD: Double?
-    let top: CursorTop?
-}
+// Pure spend math lives in ClaudeUsageCore (CursorMath, unit-tested).
 
 enum CursorAPI {
     private static let base = "https://api.cursor.com"
@@ -67,22 +53,7 @@ enum CursorAPI {
             (spend["teamMemberSpend"] as? [[String: Any]])
             ?? (spend["spend"] as? [[String: Any]]) ?? []
 
-        var cycleCents = 0
-        var limitUSD = 0.0
-        var top: CursorTop?
-        for r in rows {
-            let cents =
-                (r["overallSpendCents"] as? NSNumber)?.intValue
-                ?? (r["spendCents"] as? NSNumber)?.intValue ?? 0
-            cycleCents += cents
-            limitUSD += (r["monthlyLimitDollars"] as? NSNumber)?.doubleValue ?? 0
-            if top == nil || Double(cents) / 100 > top!.usd {
-                let who = (r["email"] as? String) ?? (r["name"] as? String) ?? "?"
-                top = CursorTop(email: who, usd: Double(cents) / 100)
-            }
-        }
-
-        var todayCents: Int? = 0
+        var todayUSD: Double?
         do {
             let ev = try await post(
                 "/teams/filtered-usage-events", key: key,
@@ -94,20 +65,11 @@ enum CursorAPI {
             let events =
                 (ev["usageEvents"] as? [[String: Any]])
                 ?? (ev["events"] as? [[String: Any]]) ?? []
-            todayCents = events.reduce(0) {
-                $0 + ((($1["chargedCents"] as? NSNumber)?.intValue) ?? 0)
-            }
+            todayUSD = CursorMath.summarizeToday(events)
         } catch {
-            todayCents = nil
+            todayUSD = nil
         }
 
-        let cycleUSD = Double(cycleCents) / 100
-        return CursorSummary(
-            cycleUSD: cycleUSD,
-            limitUSD: limitUSD,
-            percent: limitUSD > 0 ? min(100, Int((cycleUSD / limitUSD * 100).rounded())) : nil,
-            members: rows.count,
-            todayUSD: todayCents.map { Double($0) / 100 },
-            top: top)
+        return CursorMath.summarizeSpend(rows, todayUSD: todayUSD)
     }
 }

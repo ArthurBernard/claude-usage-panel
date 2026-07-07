@@ -20,6 +20,17 @@ cp -r "$SRC/." "$DEST/"
 # Compile the GSettings schema in place.
 glib-compile-schemas "$DEST/schemas/"
 
+# Compile translations (po/*.po → locale/<lang>/LC_MESSAGES/<domain>.mo).
+if command -v msgfmt >/dev/null && [ -d "$SRC/po" ]; then
+    for po in "$SRC"/po/*.po; do
+        [ -e "$po" ] || continue
+        lang="$(basename "$po" .po)"
+        mo_dir="$DEST/locale/$lang/LC_MESSAGES"
+        mkdir -p "$mo_dir"
+        msgfmt "$po" -o "$mo_dir/claude-usage-panel.mo"
+    done
+fi
+
 # Enable so it auto-starts on every login. Try the CLI first (works when the
 # shell already knows the extension); otherwise write the enabled-extensions
 # dconf key directly so it loads on the next login regardless.

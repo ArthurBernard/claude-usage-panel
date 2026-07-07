@@ -5,19 +5,13 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Soup from 'gi://Soup';
 
+import {normalizeUsage} from './pure.js';
+
 const USAGE_ENDPOINT = 'https://api.anthropic.com/api/oauth/usage';
 const OAUTH_BETA_HEADER = 'oauth-2025-04-20';
 const CREDENTIALS_PATH = `${GLib.get_home_dir()}/.claude/.credentials.json`;
 
-// Human labels + ordering for the limit kinds the endpoint returns.
-const KIND_LABELS = {
-    session: 'Current session',
-    weekly_all: 'Weekly · all models',
-    weekly_scoped: 'Weekly',
-    weekly_oauth_apps: 'Weekly · apps',
-};
-
-const KIND_ORDER = ['session', 'weekly_all', 'weekly_scoped', 'weekly_oauth_apps'];
+export {normalizeUsage};
 
 /**
  * Read the OAuth access token from ~/.claude/.credentials.json.
@@ -37,65 +31,6 @@ export function readAccessToken() {
     } catch {
         return null;
     }
-}
-
-/**
- * Turn a limit entry from the API into a normalized card model.
- */
-function normalizeLimit(entry) {
-    let label = KIND_LABELS[entry.kind] ?? entry.kind;
-    const model = entry.scope?.model?.display_name;
-    if (model)
-        label = `${label} · ${model}`;
-
-    return {
-        key: entry.kind + (model ? `:${model}` : ''),
-        label,
-        percent: Math.max(0, Math.min(100, Math.round(Number(entry.percent) || 0))),
-        severity: entry.severity ?? 'normal', // normal | warning | critical
-        resetsAt: entry.resets_at ?? null,
-        active: Boolean(entry.is_active),
-    };
-}
-
-/**
- * Extract a list of normalized limit cards from the raw API payload.
- * Prefers the modern `limits[]` array; falls back to the legacy
- * five_hour / seven_day fields for older API shapes.
- */
-export function normalizeUsage(payload) {
-    if (Array.isArray(payload?.limits) && payload.limits.length) {
-        return payload.limits
-            .map(normalizeLimit)
-            .sort((a, b) => {
-                const ai = KIND_ORDER.indexOf(a.key.split(':')[0]);
-                const bi = KIND_ORDER.indexOf(b.key.split(':')[0]);
-                return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
-            });
-    }
-
-    const cards = [];
-    if (Number.isFinite(Number(payload?.five_hour?.utilization))) {
-        cards.push({
-            key: 'session',
-            label: KIND_LABELS.session,
-            percent: Math.round(payload.five_hour.utilization),
-            severity: 'normal',
-            resetsAt: payload.five_hour.resets_at ?? null,
-            active: true,
-        });
-    }
-    if (Number.isFinite(Number(payload?.seven_day?.utilization))) {
-        cards.push({
-            key: 'weekly_all',
-            label: KIND_LABELS.weekly_all,
-            percent: Math.round(payload.seven_day.utilization),
-            severity: 'normal',
-            resetsAt: payload.seven_day.resets_at ?? null,
-            active: false,
-        });
-    }
-    return cards;
 }
 
 /**

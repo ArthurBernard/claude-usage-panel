@@ -37,5 +37,10 @@
       <summary>Cursor Admin API key</summary>
       <description>Team Admin API key (Basic auth) used to read Cursor spend. Stored locally in dconf.</description>
     </key>
+    <key name="history" type="s">
+      <default>'{}'</default>
+      <summary>Sparkline history</summary>
+      <description>JSON map of limit id to recent percentages, so the sparkline survives a restart.</description>
+    </key>
   </schema>
 </schemalist>

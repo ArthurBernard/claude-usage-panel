@@ -5,6 +5,8 @@
 import GLib from 'gi://GLib';
 import Soup from 'gi://Soup';
 
+import {summarizeCursorSpend, summarizeCursorToday} from './pure.js';
+
 const BASE = 'https://api.cursor.com';
 
 function basicAuth(key) {
@@ -54,19 +56,10 @@ function startOfTodayMs() {
 export async function fetchCursor(session, key) {
     const spend = await postJSON(session, key, '/teams/spend', {page: 1, pageSize: 100});
     const rows = spend.teamMemberSpend ?? spend.spend ?? [];
-    let cycleCents = 0;
-    let limitUSD = 0;
-    let top = null;
-    for (const r of rows) {
-        const c = r.overallSpendCents ?? r.spendCents ?? 0;
-        cycleCents += c;
-        limitUSD += r.monthlyLimitDollars ?? 0;
-        if (!top || c > top.cents)
-            top = {email: r.email ?? r.name ?? '?', cents: c};
-    }
+    const summary = summarizeCursorSpend(rows);
 
     // Today's charged spend (first page is enough for a headline figure).
-    let todayCents = 0;
+    let todayUSD = null;
     try {
         const ev = await postJSON(session, key, '/teams/filtered-usage-events', {
             startDate: startOfTodayMs(),
@@ -74,20 +67,10 @@ export async function fetchCursor(session, key) {
             page: 1,
             pageSize: 100,
         });
-        for (const e of ev.usageEvents ?? ev.events ?? [])
-            todayCents += e.chargedCents ?? 0;
+        todayUSD = summarizeCursorToday(ev.usageEvents ?? ev.events ?? []);
     } catch {
-        todayCents = -1; // unknown; hidden in the UI
+        todayUSD = null; // unknown; hidden in the UI
     }
 
-    const cycleUSD = cycleCents / 100;
-    return {
-        cycleUSD,
-        limitUSD,
-        // % of the monthly spend limit, when the team has one set (else null).
-        percent: limitUSD > 0 ? Math.min(100, Math.round((cycleUSD / limitUSD) * 100)) : null,
-        topSpender: top ? {email: top.email, usd: top.cents / 100} : null,
-        members: rows.length,
-        todayUSD: todayCents < 0 ? null : todayCents / 100,
-    };
+    return {...summary, todayUSD};
 }

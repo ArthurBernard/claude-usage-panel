@@ -1,0 +1,174 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR Falco Schmutz
+# This file is distributed under the same license as the Claude Usage Panel package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Claude Usage Panel\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-07-07 13:23+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: extension.js:188
+msgid "Refresh now"
+msgstr ""
+
+#: extension.js:201
+msgid "Settings"
+msgstr ""
+
+#: extension.js:205
+msgid "Quit"
+msgstr ""
+
+#: extension.js:253
+#, javascript-format
+msgid "Updated %s"
+msgstr ""
+
+#: extension.js:260
+msgid "Session cost: computing…"
+msgstr ""
+
+#: extension.js:266
+#, javascript-format
+msgid "Session cost: $%s · %s tokens"
+msgstr ""
+
+#: extension.js:269
+msgid "Session cost: unavailable (install ccusage)"
+msgstr ""
+
+#: extension.js:288
+msgid "Loading…"
+msgstr ""
+
+#: extension.js:297
+#, javascript-format
+msgid "This cycle: $%s / $%s (%d%%) · %d members"
+msgstr ""
+
+#: extension.js:305
+#, javascript-format
+msgid "This cycle: $%s · %d members"
+msgstr ""
+
+#: extension.js:310
+#, javascript-format
+msgid "Today: $%s"
+msgstr ""
+
+#: extension.js:312
+#, javascript-format
+msgid "Top: %s $%s"
+msgstr ""
+
+#: extension.js:316
+#, javascript-format
+msgid "Cursor: %s"
+msgstr ""
+
+#: extension.js:334
+msgid "Claude usage"
+msgstr ""
+
+#: extension.js:335
+#, javascript-format
+msgid "%s reached %d%%"
+msgstr ""
+
+#: extension.js:422
+msgid "Claude ?"
+msgstr ""
+
+#: prefs.js:10
+msgid "General"
+msgstr ""
+
+#: prefs.js:15
+msgid "Behavior"
+msgstr ""
+
+#: prefs.js:16
+msgid "How often to poll the Claude usage endpoint."
+msgstr ""
+
+#: prefs.js:21
+msgid "Refresh interval"
+msgstr ""
+
+#: prefs.js:22
+msgid "Minutes between updates (min 1)"
+msgstr ""
+
+#: prefs.js:32
+msgid "Top bar shows"
+msgstr ""
+
+#: prefs.js:33
+msgid "Which limit to display in the panel"
+msgstr ""
+
+#: prefs.js:34
+msgid "Worst limit"
+msgstr ""
+
+#: prefs.js:34
+msgid "Current session"
+msgstr ""
+
+#: prefs.js:42
+msgid "Limit-crossing alerts"
+msgstr ""
+
+#: prefs.js:43
+msgid "Notify when a limit reaches 90% or 100%"
+msgstr ""
+
+#: prefs.js:51
+msgid "Cost"
+msgstr ""
+
+#: prefs.js:52
+msgid ""
+"The official API does not expose dollar cost on subscription plans. Enable "
+"this to compute it locally with ccusage (requires Node/npx)."
+msgstr ""
+
+#: prefs.js:55
+msgid "Show session cost"
+msgstr ""
+
+#: prefs.js:56
+msgid "Runs `ccusage blocks --active` on each refresh"
+msgstr ""
+
+#: prefs.js:63
+msgid "Cursor (optional)"
+msgstr ""
+
+#: prefs.js:64
+msgid ""
+"Show Cursor team spend using the Cursor Admin API. Create a key at "
+"cursor.com → team → Settings → Admin API. Stored locally in dconf."
+msgstr ""
+
+#: prefs.js:67
+msgid "Show Cursor usage"
+msgstr ""
+
+#: prefs.js:68
+msgid "Adds a Cursor spend section to the dropdown"
+msgstr ""
+
+#: prefs.js:73
+msgid "Cursor Admin API key"
+msgstr ""

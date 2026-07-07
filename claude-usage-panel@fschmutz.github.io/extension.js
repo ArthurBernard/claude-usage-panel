@@ -17,52 +17,11 @@ import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/ex
 import {fetchUsage} from './lib/claudeUsage.js';
 import {fetchActiveCost} from './lib/cost.js';
 import {fetchCursor} from './lib/cursorUsage.js';
+import {
+    severityClass, sparkline, formatResets, alertThreshold,
+} from './lib/pure.js';
 
 const TRACK_WIDTH = 300; // px, must match .cu-track min-width in stylesheet.css
-
-function severityClass(severity) {
-    if (severity === 'critical')
-        return 'cu-critical';
-    if (severity === 'warning')
-        return 'cu-warning';
-    return 'cu-normal';
-}
-
-const SPARK_BLOCKS = ' ▁▂▃▄▅▆▇█';
-
-// Render a history array (percentages) as a unicode sparkline.
-function sparkline(history) {
-    if (!history || history.length < 2)
-        return '';
-    return history.map(p => {
-        const i = Math.max(0, Math.min(8, Math.round((p / 100) * 8)));
-        return SPARK_BLOCKS[i];
-    }).join('');
-}
-
-// "Resets in 3h 06m" / "Resets in 4d 2h"
-function formatResets(iso) {
-    if (!iso)
-        return '';
-    const target = Date.parse(iso);
-    if (Number.isNaN(target))
-        return '';
-    let delta = Math.floor((target - Date.now()) / 1000);
-    if (delta <= 0)
-        return _('Resetting…');
-    const d = Math.floor(delta / 86400);
-    delta %= 86400;
-    const h = Math.floor(delta / 3600);
-    const m = Math.floor((delta % 3600) / 60);
-    let span;
-    if (d > 0)
-        span = `${d}d ${h}h`;
-    else if (h > 0)
-        span = `${h}h ${String(m).padStart(2, '0')}m`;
-    else
-        span = `${m}m`;
-    return _('Resets in %s').format(span);
-}
 
 // One limit row: label, percentage, colored progress bar, reset time.
 const UsageCard = GObject.registerClass(
@@ -124,7 +83,7 @@ class ClaudeUsageButton extends PanelMenu.Button {
         this._lastCost = null;
         this._refreshing = false;
         this._destroyed = false;
-        this._history = new Map();     // limit id -> [percent, …] (max 12)
+        this._history = this._loadHistory();  // limit id -> [percent, …] (max 12)
         this._alertFired = new Map();  // limit id -> highest threshold already alerted
 
         // Panel button: brand glyph + compact worst-limit readout.
@@ -140,6 +99,12 @@ class ClaudeUsageButton extends PanelMenu.Button {
         this.add_child(box);
 
         this._buildMenu();
+
+        // Follow the desktop light/dark preference for the dropdown.
+        this._ifaceSettings = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
+        this._ifaceSettings.connectObject(
+            'changed::color-scheme', () => this._applyTheme(), this);
+        this._applyTheme();
 
         this._settings.connectObject(
             'changed::refresh-interval', () => this._restartTimer(),
@@ -362,7 +327,7 @@ class ClaudeUsageButton extends PanelMenu.Button {
             return;
         for (const card of cards) {
             const prev = this._alertFired.get(card.key) ?? 0;
-            const threshold = card.percent >= 100 ? 100 : (card.percent >= 90 ? 90 : 0);
+            const threshold = alertThreshold(card.percent);
             if (threshold > prev) {
                 this._alertFired.set(card.key, threshold);
                 const tail = card.resetsAt ? ` — ${formatResets(card.resetsAt)}` : '';
@@ -371,6 +336,33 @@ class ClaudeUsageButton extends PanelMenu.Button {
             } else if (threshold < prev && card.percent < 85) {
                 this._alertFired.set(card.key, threshold); // re-arm for the next cycle
             }
+        }
+    }
+
+    _applyTheme() {
+        const dark = this._ifaceSettings.get_string('color-scheme') === 'prefer-dark';
+        if (dark)
+            this.menu.box.remove_style_class_name('cu-light');
+        else
+            this.menu.box.add_style_class_name('cu-light');
+    }
+
+    _loadHistory() {
+        try {
+            const obj = JSON.parse(this._settings.get_string('history'));
+            return new Map(Object.entries(obj)
+                .map(([k, v]) => [k, Array.isArray(v) ? v.slice(-12) : []]));
+        } catch {
+            return new Map();
+        }
+    }
+
+    _saveHistory() {
+        try {
+            this._settings.set_string('history',
+                JSON.stringify(Object.fromEntries(this._history)));
+        } catch {
+            // non-fatal: sparkline history is best-effort
         }
     }
 
@@ -385,6 +377,10 @@ class ClaudeUsageButton extends PanelMenu.Button {
             if (hist.length > 12)
                 hist.shift();
             this._history.set(card.key, hist);
+        }
+        this._saveHistory();
+        for (const card of cards) {
+            const hist = this._history.get(card.key) ?? [];
 
             let widget = this._cards.get(card.key);
             if (!widget) {
@@ -451,6 +447,7 @@ class ClaudeUsageButton extends PanelMenu.Button {
             this._timerId = 0;
         }
         this._settings?.disconnectObject(this);
+        this._ifaceSettings?.disconnectObject(this);
         this._httpSession?.abort();
         this._httpSession = null;
         super.destroy();

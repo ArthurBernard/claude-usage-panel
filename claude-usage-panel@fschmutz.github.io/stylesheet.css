@@ -128,6 +128,23 @@
     spacing: 8px;
 }
 
+/* ---- light theme overrides (applied when desktop is not prefer-dark) ---- */
+.cu-light .cu-title,
+.cu-light .cu-section-title { color: #1a1a1a; }
+.cu-light .cu-card-label { color: #333; }
+.cu-light .cu-card-pct.cu-normal { color: #b35a3c; }
+.cu-light .cu-card {
+    background-color: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.cu-light .cu-card:hover { background-color: rgba(0, 0, 0, 0.08); }
+.cu-light .cu-track { background-color: rgba(0, 0, 0, 0.12); }
+.cu-light .cu-card-reset,
+.cu-light .cu-updated,
+.cu-light .cu-spark { color: #6b6b60; }
+.cu-light .cu-cost { color: #333; }
+.cu-light .cu-plan { color: #666; }
+
 /* ---- status footer ---- */
 .cu-status {
     spacing: 3px;

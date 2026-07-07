@@ -1,4 +1,5 @@
 import AppKit
+import ClaudeUsageCore
 import SwiftUI
 
 // MARK: - Palette (matches the GNOME extension)
@@ -68,6 +69,7 @@ final class UsageModel: ObservableObject {
         alertsEnabled = UserDefaults.standard.object(forKey: "alertsEnabled") as? Bool ?? true
         cursorEnabled = UserDefaults.standard.bool(forKey: "cursorEnabled")
         cursorApiKey = UserDefaults.standard.string(forKey: "cursorApiKey") ?? ""
+        history = (UserDefaults.standard.dictionary(forKey: "history") as? [String: [Int]]) ?? [:]
         restart()  // didSet does not fire from init, so start the loop explicitly
     }
 
@@ -131,6 +133,7 @@ final class UsageModel: ObservableObject {
             if h.count > 12 { h.removeFirst(h.count - 12) }
             history[c.id] = h
         }
+        UserDefaults.standard.set(history, forKey: "history")  // survive restarts
     }
 
     // Notify on first crossing of 90% / 100%, with hysteresis to re-arm.
