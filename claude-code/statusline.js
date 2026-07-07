@@ -301,21 +301,27 @@ async function main() {
   // settings `padding` field, not by us), so we just emit left-aligned content.
   const emit = (body) => process.stdout.write([ctx, body].filter(Boolean).join('  '));
 
-  const token = readAccessToken();
   const cached = readCache();
   let raw = cached?.fresh ? cached.raw : null;
 
-  if (!raw && token) {
-    const result = await fetchUsage(token);
-    if (result.raw) {
-      raw = result.raw;
-      writeCache(raw);
-    } else if (cached) {
-      // Fetch failed (e.g. HTTP 429): keep showing the last good data and back
-      // off, so we don't re-hit the endpoint — and re-trigger the limit — on
-      // every refresh.
-      raw = cached.raw;
-      touchCache();
+  // Only read the token when the cache is stale and we actually need to fetch.
+  // On macOS reading it spawns a synchronous `security` process, so we avoid
+  // doing that on every render when fresh cached data is already available.
+  let token = null;
+  if (!raw) {
+    token = readAccessToken();
+    if (token) {
+      const result = await fetchUsage(token);
+      if (result.raw) {
+        raw = result.raw;
+        writeCache(raw);
+      } else if (cached) {
+        // Fetch failed (e.g. HTTP 429): keep showing the last good data and back
+        // off, so we don't re-hit the endpoint — and re-trigger the limit — on
+        // every refresh.
+        raw = cached.raw;
+        touchCache();
+      }
     }
   }
 
