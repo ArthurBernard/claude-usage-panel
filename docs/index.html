@@ -104,7 +104,7 @@
 <section class="hero"><div class="wrap"><div class="grid">
   <div>
     <h1>See your Claude Code usage,<br>without leaving your desktop.</h1>
-    <p class="sub">Session, weekly, and <strong>per-model</strong> limits (Fable, Opus…) — the same numbers as <code>/usage</code>, always visible in the GNOME top bar or the macOS menu bar.</p>
+    <p class="sub">Session, weekly, and <strong>per-model</strong> limits (Fable, Opus…) — the same numbers as <code>/usage</code>, always visible in the GNOME top bar, the macOS menu bar, or under your Claude Code prompt.</p>
     <div class="cta">
       <a class="btn primary" href="#install">Install →</a>
       <a class="btn ghost" href="https://github.com/fschmutz/claude-usage-panel/releases/latest">Download release</a>
@@ -129,6 +129,7 @@
     <div class="feat"><div class="ic">📈</div><h3>Usage sparkline</h3><p>A tiny per-limit trend graph so you see where you're heading, not just where you are.</p></div>
     <div class="feat"><div class="ic">💲</div><h3>Session cost</h3><p>Optional dollar cost computed locally via <code>ccusage</code>.</p></div>
     <div class="feat"><div class="ic">🟣</div><h3>Cursor spend</h3><p>Optional team cycle spend, today, and top spender via the Cursor Admin API — with a % gauge when a limit is set.</p></div>
+    <div class="feat"><div class="ic">⌨️</div><h3>Terminal status line</h3><p>A condensed one-line view right under the Claude Code prompt — same numbers, zero-dependency Node, cache + backoff.</p></div>
   </div>
   <div class="why">
     <b>Why this one?</b> Most Claude usage indicators read the endpoint's legacy fields and show only the aggregate session + weekly pair. This one reads the modern <b>limits[]</b> array, so it shows <b>every</b> limit the Claude app shows — including <b>per-model weekly limits</b> the others miss — on <b>both Linux and macOS</b>, with native UI on each. No Electron.
@@ -141,6 +142,7 @@
   <div class="tabs">
     <div class="tab on" data-p="gnome">GNOME (Linux)</div>
     <div class="tab" data-p="macos">macOS</div>
+    <div class="tab" data-p="cli">Claude Code status line</div>
   </div>
   <div class="pane on" id="gnome">
 <pre>git clone https://github.com/fschmutz/claude-usage-panel.git
@@ -155,6 +157,11 @@ gnome-extensions enable claude-usage-panel@fschmutz.github.io</pre>
 swift run          # icon appears in the menu bar
 # or ./build-app.sh for a ClaudeUsagePanel.app bundle</pre>
     <p class="lead" style="margin-top:14px">macOS 13+. The token is read from the login Keychain — click <b>Always Allow</b> on first launch.</p>
+  </div>
+  <div class="pane" id="cli">
+<pre>cd claude-code
+./install.sh       # merges a statusLine entry into ~/.claude/settings.json</pre>
+    <p class="lead" style="margin-top:14px">Renders under the Claude Code prompt: <code>Context ▌░░ 8%  Session █▌░ 26% 59m  Week █▌░ 24%  Fable █▊░ 29%</code>. Needs only Node (already present) and a Claude Code login.</p>
   </div>
   <div class="shots2">
     <img src="screenshot.png" alt="Dropdown">

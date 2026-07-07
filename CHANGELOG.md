@@ -8,6 +8,9 @@ semantic versioning.
 
 ### Added
 
+- Claude Code **terminal status line** (`claude-code/`): a condensed one-line
+  usage view under the prompt, with cache + rate-limit backoff and a stdin
+  `rate_limits` fallback. Contributed by @Giovannibthx (#7).
 - Unit tests: JS (`node --test`) for the extension's pure logic and Swift
   (`swift test`) for the `ClaudeUsageCore` library, wired into CI.
 - Sparkline history now persists across restarts (dconf on GNOME,
