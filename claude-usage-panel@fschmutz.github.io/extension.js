@@ -188,10 +188,21 @@ class ClaudeUsageButton extends PanelMenu.Button {
         const cursorBox = new St.BoxLayout({vertical: true, x_expand: true, style_class: 'cu-cursor'});
         this._cursorTitle = new St.Label({text: 'Cursor', style_class: 'cu-section-title'});
         this._cursorCycle = new St.Label({text: '', style_class: 'cu-cost'});
+        // Gauge bar, shown only when the team has a monthly spend limit set.
+        this._cursorTrack = new St.Bin({
+            style_class: 'cu-track',
+            x_align: Clutter.ActorAlign.START,
+            y_align: Clutter.ActorAlign.CENTER,
+            x_expand: false,
+        });
+        this._cursorFill = new St.Widget({style_class: 'cu-fill'});
+        this._cursorTrack.set_child(this._cursorFill);
+        this._cursorTrack.visible = false;
         this._cursorToday = new St.Label({text: '', style_class: 'cu-updated'});
         this._cursorTop = new St.Label({text: '', style_class: 'cu-updated'});
         cursorBox.add_child(this._cursorTitle);
         cursorBox.add_child(this._cursorCycle);
+        cursorBox.add_child(this._cursorTrack);
         cursorBox.add_child(this._cursorToday);
         cursorBox.add_child(this._cursorTop);
         this._cursorItem.add_child(cursorBox);
@@ -316,8 +327,20 @@ class ClaudeUsageButton extends PanelMenu.Button {
             const c = await fetchCursor(this._httpSession, key);
             if (this._destroyed)
                 return;
-            this._cursorCycle.text = _('This cycle: $%s · %d members')
-                .format(c.cycleUSD.toFixed(2), c.members);
+            if (c.percent !== null) {
+                // Team has a monthly limit → show a % gauge.
+                this._cursorCycle.text = _('This cycle: $%s / $%s (%d%%) · %d members')
+                    .format(c.cycleUSD.toFixed(2), c.limitUSD.toFixed(0), c.percent, c.members);
+                const sev = c.percent >= 100 ? 'cu-critical'
+                    : (c.percent >= 90 ? 'cu-warning' : 'cu-normal');
+                this._cursorFill.style_class = `cu-fill ${sev}`;
+                this._cursorFill.style = `width: ${Math.round((c.percent / 100) * TRACK_WIDTH)}px;`;
+                this._cursorTrack.visible = true;
+            } else {
+                this._cursorCycle.text = _('This cycle: $%s · %d members')
+                    .format(c.cycleUSD.toFixed(2), c.members);
+                this._cursorTrack.visible = false;
+            }
             this._cursorToday.text = c.todayUSD === null
                 ? '' : _('Today: $%s').format(c.todayUSD.toFixed(2));
             this._cursorTop.text = c.topSpender
@@ -326,6 +349,7 @@ class ClaudeUsageButton extends PanelMenu.Button {
             if (this._destroyed)
                 return;
             this._cursorCycle.text = _('Cursor: %s').format(e.message);
+            this._cursorTrack.visible = false;
             this._cursorToday.text = '';
             this._cursorTop.text = '';
         }

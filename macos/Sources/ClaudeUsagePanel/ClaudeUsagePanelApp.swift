@@ -347,8 +347,19 @@ private struct CursorSectionView: View {
         VStack(alignment: .leading, spacing: 3) {
             Text("Cursor").font(.system(size: 13, weight: .bold))
             if let s = model.cursorSummary {
-                Text(String(format: "This cycle: $%.2f · %d members", s.cycleUSD, s.members))
-                    .font(.system(size: 12, weight: .semibold))
+                if let pct = s.percent {
+                    Text(
+                        String(
+                            format: "This cycle: $%.2f / $%.0f (%d%%) · %d members",
+                            s.cycleUSD, s.limitUSD, pct, s.members)
+                    ).font(.system(size: 12, weight: .semibold))
+                    ProgressBar(
+                        percent: pct,
+                        color: pct >= 100 ? .cuCritical : (pct >= 90 ? .cuWarning : .cuAccent))
+                } else {
+                    Text(String(format: "This cycle: $%.2f · %d members", s.cycleUSD, s.members))
+                        .font(.system(size: 12, weight: .semibold))
+                }
                 if let today = s.todayUSD {
                     Text(String(format: "Today: $%.2f", today))
                         .font(.system(size: 11)).foregroundColor(.secondary)

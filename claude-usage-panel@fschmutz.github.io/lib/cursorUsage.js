@@ -55,10 +55,12 @@ export async function fetchCursor(session, key) {
     const spend = await postJSON(session, key, '/teams/spend', {page: 1, pageSize: 100});
     const rows = spend.teamMemberSpend ?? spend.spend ?? [];
     let cycleCents = 0;
+    let limitUSD = 0;
     let top = null;
     for (const r of rows) {
         const c = r.overallSpendCents ?? r.spendCents ?? 0;
         cycleCents += c;
+        limitUSD += r.monthlyLimitDollars ?? 0;
         if (!top || c > top.cents)
             top = {email: r.email ?? r.name ?? '?', cents: c};
     }
@@ -78,8 +80,12 @@ export async function fetchCursor(session, key) {
         todayCents = -1; // unknown; hidden in the UI
     }
 
+    const cycleUSD = cycleCents / 100;
     return {
-        cycleUSD: cycleCents / 100,
+        cycleUSD,
+        limitUSD,
+        // % of the monthly spend limit, when the team has one set (else null).
+        percent: limitUSD > 0 ? Math.min(100, Math.round((cycleUSD / limitUSD) * 100)) : null,
         topSpender: top ? {email: top.email, usd: top.cents / 100} : null,
         members: rows.length,
         todayUSD: todayCents < 0 ? null : todayCents / 100,

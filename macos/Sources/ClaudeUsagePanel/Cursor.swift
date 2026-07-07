@@ -16,6 +16,8 @@ struct CursorTop {
 
 struct CursorSummary {
     let cycleUSD: Double
+    let limitUSD: Double
+    let percent: Int?  // % of monthly limit, when the team has one set
     let members: Int
     let todayUSD: Double?
     let top: CursorTop?
@@ -66,12 +68,14 @@ enum CursorAPI {
             ?? (spend["spend"] as? [[String: Any]]) ?? []
 
         var cycleCents = 0
+        var limitUSD = 0.0
         var top: CursorTop?
         for r in rows {
             let cents =
                 (r["overallSpendCents"] as? NSNumber)?.intValue
                 ?? (r["spendCents"] as? NSNumber)?.intValue ?? 0
             cycleCents += cents
+            limitUSD += (r["monthlyLimitDollars"] as? NSNumber)?.doubleValue ?? 0
             if top == nil || Double(cents) / 100 > top!.usd {
                 let who = (r["email"] as? String) ?? (r["name"] as? String) ?? "?"
                 top = CursorTop(email: who, usd: Double(cents) / 100)
@@ -97,8 +101,11 @@ enum CursorAPI {
             todayCents = nil
         }
 
+        let cycleUSD = Double(cycleCents) / 100
         return CursorSummary(
-            cycleUSD: Double(cycleCents) / 100,
+            cycleUSD: cycleUSD,
+            limitUSD: limitUSD,
+            percent: limitUSD > 0 ? min(100, Int((cycleUSD / limitUSD * 100).rounded())) : nil,
             members: rows.count,
             todayUSD: todayCents.map { Double($0) / 100 },
             top: top)

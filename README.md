@@ -185,9 +185,9 @@ markdownlint (docs), gitleaks (secret scan), plus JSON/XML/whitespace checks.
 
 ## Roadmap
 
-- [ ] extensions.gnome.org listing
-- [ ] Notarized macOS `.app` + Homebrew cask
-- [ ] Per-model `%` gauge for Cursor once a monthly limit is set
+- [x] Cursor spend **gauge** — shows a colored `%` bar when the team has a monthly spend limit set (falls back to spend text otherwise)
+- [ ] extensions.gnome.org listing *(needs a GNOME store account — [PUBLISHING.md](PUBLISHING.md))*
+- [ ] Notarized macOS `.app` + Homebrew cask *(needs an Apple Developer signing cert)*
 
 ## License
 
