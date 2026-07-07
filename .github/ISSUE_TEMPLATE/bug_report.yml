@@ -1,0 +1,22 @@
+name: Bug report
+description: Something isn't working
+labels: [bug]
+body:
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options: [GNOME (Linux), macOS]
+    validations: {required: true}
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: gnome-extensions info … | Version, or the app version
+    validations: {required: true}
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include steps to reproduce and, for GNOME, `journalctl --user -b 0 | grep claude-usage-panel`.
+    validations: {required: true}
