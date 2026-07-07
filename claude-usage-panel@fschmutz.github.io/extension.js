@@ -200,9 +200,27 @@ class ClaudeUsageButton extends PanelMenu.Button {
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-        const refreshItem = new PopupMenu.PopupImageMenuItem(_('Refresh now'), 'view-refresh-symbolic');
-        refreshItem.connect('activate', () => this.refresh());
-        this.menu.addMenuItem(refreshItem);
+        // Refresh as a St.Button (not a menu item) so clicking it refreshes
+        // in place WITHOUT closing the popup.
+        const refreshRow = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
+        const refreshBox = new St.BoxLayout({style_class: 'cu-refresh-box'});
+        refreshBox.add_child(new St.Icon({
+            icon_name: 'view-refresh-symbolic',
+            style_class: 'popup-menu-icon',
+        }));
+        refreshBox.add_child(new St.Label({
+            text: _('Refresh now'),
+            y_align: Clutter.ActorAlign.CENTER,
+        }));
+        const refreshBtn = new St.Button({
+            style_class: 'cu-refresh-btn',
+            x_expand: true,
+            can_focus: true,
+            child: refreshBox,
+        });
+        refreshBtn.connect('clicked', () => this.refresh());
+        refreshRow.add_child(refreshBtn);
+        this.menu.addMenuItem(refreshRow);
 
         const prefsItem = new PopupMenu.PopupImageMenuItem(_('Settings'), 'emblem-system-symbolic');
         prefsItem.connect('activate', () => this._extension.openPreferences());
