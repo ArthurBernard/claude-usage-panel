@@ -4,6 +4,8 @@ schemas/gschemas.compiled
 
 # Packaged bundles
 *.zip
+# Built macOS app bundle (install.sh macos → macos/ClaudeUsagePanel.app)
+*.app/
 
 # Node (eslint run locally)
 node_modules/
