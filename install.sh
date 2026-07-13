@@ -11,6 +11,7 @@
 #   ./install.sh update --pull             git pull --ff-only first, then upgrade
 #   ./install.sh --uninstall [target...]   reverse an install (default: all detected)
 #   ./install.sh --dry-run [target...]     print the actions without doing them (alias -n)
+#   ./install.sh macos --build-only        build the .app but don't install it (used by CI)
 #   ./install.sh --list             show detected + installed targets
 #   ./install.sh -h | --help
 #
@@ -35,6 +36,7 @@ ok() { printf '  \033[32mok\033[0m   %s\n' "$*"; }
 # heredoc merges (node/python) are guarded inline with `$DRY`.
 DRY=false
 PULL=false
+BUILD_ONLY=false # macos: build the .app but don't install to /Applications (used by CI)
 act() {
     if $DRY; then printf '  would: %s\n' "$*"; else "$@"; fi
 }
@@ -134,27 +136,33 @@ install_statusline() {
     local dest_dir="$HOME/.claude"
     # .mjs so Node always treats it as ESM regardless of any nearby package.json.
     local dest="$dest_dir/claude-usage-statusline.mjs"
+    local prev="$dest_dir/claude-usage-statusline.prev.json"
     act mkdir -p "$dest_dir"
     act cp "$src" "$dest"
     act chmod +x "$dest"
 
     if $DRY; then
         echo "  would: merge statusLine → node \"$dest\" into $dest_dir/settings.json"
+        echo "  would: back up any existing (foreign) statusLine to $prev for --uninstall to restore"
         ok "dry-run: no changes written"
         return 0
     fi
     # Merge the statusLine key with Node so an existing settings.json is never
-    # corrupted; all other keys are preserved.
-    COMMAND="node \"$dest\"" node - "$dest_dir/settings.json" <<'JS'
+    # corrupted; all other keys are preserved. If we replace a FOREIGN status
+    # line (someone's own), stash it in $prev so --uninstall can put it back.
+    COMMAND="node \"$dest\"" PREV="$prev" node - "$dest_dir/settings.json" <<'JS'
 const fs = require('fs');
 const path = process.argv[2];
 let settings = {};
 try { settings = JSON.parse(fs.readFileSync(path, 'utf8')); } catch { /* fresh */ }
 const existing = settings.statusLine;
+const ours = existing && /claude-usage-statusline\.mjs/.test(existing.command || '');
+if (existing && !ours) {
+  fs.writeFileSync(process.env.PREV, JSON.stringify(existing, null, 2) + '\n');
+  console.log('  backed up your previous statusLine → restored on `--uninstall statusline`');
+}
 settings.statusLine = {type: 'command', command: process.env.COMMAND};
 fs.writeFileSync(path, JSON.stringify(settings, null, 2) + '\n');
-if (existing && existing.command !== settings.statusLine.command)
-  console.log('  replaced an existing statusLine command: ' + (existing.command || JSON.stringify(existing)));
 JS
     ok "installed to $dest and merged statusLine into $dest_dir/settings.json"
     echo "  Open a Claude Code session or run /statusline to see it."
@@ -163,24 +171,30 @@ JS
 uninstall_statusline() {
     info "Claude Code status line"
     local dest_dir="$HOME/.claude"
+    local prev="$dest_dir/claude-usage-statusline.prev.json"
     act rm -f "$dest_dir/claude-usage-statusline.mjs"
     if $DRY; then
-        echo "  would: drop our statusLine entry from $dest_dir/settings.json (foreign ones kept)"
+        echo "  would: drop our statusLine from $dest_dir/settings.json, restoring $prev if present"
         ok "dry-run: no changes written"
         return 0
     fi
-    # Remove only OUR statusLine entry (leave a foreign one untouched).
+    # Remove only OUR statusLine entry; if we had backed up a foreign one at
+    # install time, restore it instead of leaving none.
     if command -v node >/dev/null && [ -f "$dest_dir/settings.json" ]; then
-        node - "$dest_dir/settings.json" <<'JS'
+        PREV="$prev" node - "$dest_dir/settings.json" <<'JS'
 const fs = require('fs');
 const path = process.argv[2];
 let s; try { s = JSON.parse(fs.readFileSync(path, 'utf8')); } catch { process.exit(0); }
 if (s.statusLine && /claude-usage-statusline\.mjs/.test(s.statusLine.command || '')) {
-  delete s.statusLine;
+  let restored = false;
+  try { s.statusLine = JSON.parse(fs.readFileSync(process.env.PREV, 'utf8')); restored = true; }
+  catch { delete s.statusLine; }
   fs.writeFileSync(path, JSON.stringify(s, null, 2) + '\n');
+  console.log(restored ? '  restored your previous statusLine' : '  removed our statusLine');
 }
 JS
     fi
+    act rm -f "$prev"
     ok "removed"
 }
 
@@ -236,6 +250,12 @@ PLIST
     # (see PUBLISHING.md). The signature is preserved by the copy below.
     codesign --deep --force --sign - "$bundle" >/dev/null 2>&1 || true
     ok "built $bundle (v$ver)"
+
+    # CI builds the bundle only (to zip as a release asset) — no /Applications.
+    if $BUILD_ONLY; then
+        ok "build-only: skipped /Applications install"
+        return 0
+    fi
 
     # Make it perpetual: install into /Applications and launch it. On first run
     # the app registers itself as a login item (toggle in Settings ▸ Start at login).
@@ -310,6 +330,7 @@ for arg in "$@"; do
         update) action=update ;;
         --uninstall) action=uninstall ;;
         --pull) PULL=true ;;
+        --build-only) BUILD_ONLY=true ;;
         --dry-run | -n) DRY=true ;;
         --list) action=list ;;
         -*)
