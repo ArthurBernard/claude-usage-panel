@@ -25,20 +25,27 @@ semantic versioning.
   `git pull --ff-only` first. macOS quits the running app and relaunches the new
   build so the upgrade actually takes effect; `--list` now shows detected vs
   installed targets.
-- Status line: a **Σ per-session token counter** (summed from the transcript
-  Claude Code points to, `all`/`fresh` cache-read modes), and a **guided
-  installer** — the `statusline` target now offers an interactive segment
-  checklist and token-total choice, plus `--segments` / `--tokens` flags baked
-  into the command. By @Giovannibthx (#8).
+- Status line: a **Σ per-session token counter** — the cumulative tokens the
+  window has consumed, summed from the transcript Claude Code points to, with
+  `all` (includes cache reads = true throughput) and `fresh` modes. The token
+  sums are cached on disk keyed by the transcript's size+mtime, so a multi-MB
+  transcript isn't re-read on every refresh. Based on @Giovannibthx's #8.
+- Status line: choose the segments and token mode with `install.sh statusline
+  --segments=context,limits,tokens --tokens=all|fresh` (baked into the installed
+  command; non-interactive and pipe-safe).
 
 ### Changed
 
 - The Claude Code status line now **renders only from Claude Code's stdin**
-  (Context + Session/Week), fixing the cold-start "unavailable" message and
-  always showing every limit even at 0 %. Per-model (Fable) limits and API
-  severity are no longer displayed, since stdin doesn't expose them; the shared
-  `normalizeUsage` and cache helpers are kept for the cross-port parity and
-  cache tests. By @Giovannibthx (#8).
+  (Context + Session/Week + the transcript for the token total), fixing the
+  cold-start "unavailable" message and always showing every limit even at 0 %.
+  It needs no credentials, no network, and no OAuth cache. **Per-model (Fable)
+  limits are now desktop-only by design** — stdin never exposes them, so the
+  terminal line drops them while the GNOME extension and macOS app keep them via
+  the OAuth endpoint. The now-unused `normalizeUsage` and OAuth cache helpers
+  were removed from the status line, and it is no longer part of the cross-port
+  normalization parity test (which now binds `lib/pure.js` ↔ the Swift core, the
+  two ports that still fetch and normalize). Based on @Giovannibthx's #8.
 
 ## [1.4.0] — 2026-07-13
 

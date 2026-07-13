@@ -147,18 +147,21 @@ Release build, notarization, and a Homebrew cask template are in
 ### Claude Code status line
 
 Prefer it in the terminal? A tiny status line renders your usage **right under
-the Claude Code prompt input** — the same numbers, without leaving your session:
+the Claude Code prompt input**, without leaving your session:
 
 ```text
-Context ▌░░░░░ 8%  Session █▌░░░░ 26% 59m  Week █▌░░░░ 24%  Fable █▊░░░░ 29% 1d18h
+Context ▌░░░░░ 8%  Session █▌░░░░ 26% 59m  Week █▌░░░░ 24% 4d2h  ∑ 1.2M tok
 ```
 
-Each limit gets a compact gauge, filled **green / yellow / red** by the API's own
-severity, a matching gauge for the session's context-window usage, and reset
-countdowns — the session's own, plus the shared weekly reset shown once after the
-weekly limits. It renders on its own row above Claude Code's mode badges (which
-it leaves untouched); Claude Code left-anchors the row, so indent it with the
-settings `padding` field if you like. Install it with:
+Each part gets a compact gauge, filled **green / yellow / red**, plus reset
+countdowns and a **∑ session-token counter**. It reads only what Claude Code
+pipes on stdin — context, the Session/Week rate limits, and the transcript for
+the token total — so it needs no credentials, no network, and starts instantly.
+Per-model (Fable) limits are desktop-only (stdin doesn't expose them). Pick the
+segments and token mode with `--segments=` / `--tokens=`. It renders on its own
+row above Claude Code's mode badges (which it leaves untouched); Claude Code
+left-anchors the row, so indent it with the settings `padding` field if you
+like. Install it with:
 
 ```bash
 ./install.sh statusline

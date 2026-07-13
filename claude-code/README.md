@@ -40,19 +40,20 @@ This copies the script to `~/.claude/claude-usage-statusline.mjs` and merges a
 untouched; re-running is safe). Open a new Claude Code session — or run
 `/statusline` — to see it.
 
-In a terminal it first runs a short guided setup with two interactive menus and
-a live preview of the line as you change things:
+Choose which segments to show, in what order, and the token-total mode with two
+optional flags (baked into the installed command; re-run to change them):
 
-- **Segments** — a checklist of `context`, `limits`, `tokens`. `↑`/`↓` move,
-  `space` toggles a segment on/off, `<`/`>` reorder it, `Enter` confirms.
-  Top-to-bottom is left-to-right on the status line.
-- **Token counter total** — a radio between `all` (include cache reads; the true
-  throughput) and `fresh` (exclude them; only new tokens), each shown with its
-  live figure. Only appears when `tokens` is enabled.
+```sh
+./install.sh statusline --segments=context,limits,tokens --tokens=all
+```
 
-Piped installs (and `--dry-run`) skip the menus and take the defaults: all three
-segments with the `all` token total. Your choices are baked into the command as
-`--segments` / `--tokens` flags, so re-running the installer changes them.
+- **`--segments`** — any order of `context`, `limits`, `tokens`; left-to-right on
+  the line. Unknown names are dropped; omitting the flag shows all three.
+- **`--tokens`** — `all` (include cache reads; the true throughput) or `fresh`
+  (only new tokens). Defaults to `all`.
+
+The installer is non-interactive and pipe-safe — a `curl | bash` or `--dry-run`
+install just takes the defaults.
 
 To remove it, run `./install.sh --uninstall statusline` (deletes the script and
 its `statusLine` entry, leaving any other settings alone).
@@ -73,8 +74,8 @@ Node treats it as ESM regardless of any nearby `package.json`:
 ```
 
 The `--segments` / `--tokens` flags are optional — omitting them shows every
-segment with the `all` token total. They're exactly what the guided installer
-writes for you.
+segment with the `all` token total. They're exactly what `./install.sh
+statusline` bakes in for you.
 
 ## How it works
 
@@ -93,9 +94,12 @@ API response of the session**, so on a fresh session you'll see just the
 **Context** gauge until your first message — Session and Week appear as soon as
 Claude Code provides them.
 
-(The module also exports the shared `normalizeUsage` and on-disk cache helpers,
-retained for the cross-port parity and cache unit tests; the status line itself
-renders only from stdin.)
+**Per-model (Fable) weekly limits are not shown here** — Claude Code's stdin
+never exposes them; they come only from the OAuth usage endpoint, which the
+GNOME extension and macOS app read. The terminal line is deliberately the cheap
+stdin-only projection. The token sums are cached on disk (keyed by the
+transcript's size + modification time), so a long, multi-megabyte transcript
+isn't re-read on every prompt refresh.
 
 ## Requirements
 
