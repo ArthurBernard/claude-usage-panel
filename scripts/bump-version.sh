@@ -21,20 +21,14 @@ if ! [[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 fi
 DATE="$(date +%F)"
 
-# JSON files — edit with Node so formatting/key order is preserved exactly.
-V="$V" node <<'JS'
-const fs = require('fs');
-const v = process.env.V;
-for (const [f, key] of [
-  ['package.json', 'version'],
-  ['claude-usage-panel@fschmutz.github.io/metadata.json', 'version-name'],
-]) {
-  const j = JSON.parse(fs.readFileSync(f, 'utf8'));
-  j[key] = v;
-  fs.writeFileSync(f, JSON.stringify(j, null, 2) + '\n');
-  console.log(`  ${f} → ${v}`);
+# JSON files — replace only the version value, in place, so the rest of the
+# file's formatting (array layout, spacing) is untouched.
+bump_json() { # <file> <key>
+    V="$V" perl -pi -e 's/("'"$2"'"\s*:\s*")\d+\.\d+\.\d+(")/${1}$ENV{V}${2}/' "$1"
+    echo "  $1 → $V"
 }
-JS
+bump_json package.json version
+bump_json claude-usage-panel@fschmutz.github.io/metadata.json version-name
 
 # Homebrew cask example in PUBLISHING.md: `  version "x.y.z"`.
 V="$V" perl -pi -e 's/^(  version ")\d+\.\d+\.\d+(")/${1}$ENV{V}${2}/' PUBLISHING.md
