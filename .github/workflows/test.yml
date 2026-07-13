@@ -15,7 +15,8 @@ jobs:
           node-version: "22"
       - run: node --test "tests/*.test.js"
 
-  swift:
+  # Linux: fast parity gate — builds/tests only the Foundation-only core.
+  swift-core:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -23,4 +24,15 @@ jobs:
         with:
           swift-version: "6.1"
       - run: swift test
+        working-directory: macos
+
+  # macOS: compile the real SwiftUI menu-bar app (macOS-only target) so type
+  # errors in the app layer are caught in CI, not only when a Mac user builds it.
+  macos-app:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: swift build          # includes the macOS-only ClaudeUsagePanel executable
+        working-directory: macos
+      - run: swift test           # core + parity suites on Apple's toolchain too
         working-directory: macos
