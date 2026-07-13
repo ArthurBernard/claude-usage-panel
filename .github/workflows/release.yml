@@ -25,7 +25,18 @@ jobs:
 
       - name: Resolve tag
         id: t
-        run: echo "tag=${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}" >> "$GITHUB_OUTPUT"
+        # On a tag push GITHUB_REF_NAME is the tag; on workflow_dispatch the ref
+        # is a branch (e.g. main), so the explicit `tag` input must win. Guard
+        # that the resolved value looks like a version tag.
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          tag="${INPUT_TAG:-$GITHUB_REF_NAME}"
+          case "$tag" in
+            v[0-9]*) ;;
+            *) echo "Refusing to release non-version tag: '$tag'" >&2; exit 1 ;;
+          esac
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       # Build the installable GNOME zip: metadata.json at the root, the compiled
       # GSettings schema, and compiled translations — same layout install.sh makes.
