@@ -37,8 +37,11 @@ For a reusable `.app` bundle, run the unified installer from the repo root
 (its version is read from `package.json`):
 
 ```bash
-./install.sh macos          # produces macos/ClaudeUsagePanel.app
+./install.sh macos          # build, install to /Applications, launch
 ```
+
+To upgrade later, `./install.sh update` (or `update --pull`) quits the running
+app, replaces it in `/Applications`, and relaunches the new build.
 
 Or a bare release binary / Xcode:
 

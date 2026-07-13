@@ -30,7 +30,8 @@ pre-commit run eslint --all-files   # single hook
 ./install.sh gnome           # GNOME extension only → then log out/in (Wayland)
 ./install.sh statusline      # status line → merges into ~/.claude/settings.json
 ./install.sh macos           # build macos/ClaudeUsagePanel.app
-./install.sh --uninstall [target...]   # reverse it   |   --list   |   -h
+./install.sh update [target...]        # reinstall installed targets (upgrade); --pull to git pull first
+./install.sh --uninstall [target...]   # reverse it   |   --list (detected + installed)   |   -h
 ./install.sh --dry-run [target...]     # print actions without touching anything
 
 # Release: bump the version everywhere from one source of truth

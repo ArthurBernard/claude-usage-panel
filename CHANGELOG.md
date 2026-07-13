@@ -6,6 +6,14 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- `install.sh update [target…]` upgrades an existing install in place —
+  reinstalling only the targets already present (detected), with `--pull` to
+  `git pull --ff-only` first. macOS quits the running app and relaunches the new
+  build so the upgrade actually takes effect; `--list` now shows detected vs
+  installed targets.
+
 ## [1.4.0] — 2026-07-13
 
 ### Added

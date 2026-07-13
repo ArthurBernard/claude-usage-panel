@@ -84,10 +84,12 @@ reverse any install:
 | `./install.sh` | auto-detect OS → the sensible set |
 | `./install.sh gnome` | GNOME Shell extension |
 | `./install.sh statusline` | Claude Code status line |
-| `./install.sh macos` | build the macOS `.app` |
+| `./install.sh macos` | build + install the macOS `.app` |
 | `./install.sh gnome statusline` | any combination |
+| `./install.sh update [target…]` | reinstall what's already installed (upgrade) |
+| `./install.sh update --pull` | `git pull` first, then upgrade |
 | `./install.sh --uninstall [target…]` | reverse an install |
-| `./install.sh --list` · `-h` | show detected targets · full help |
+| `./install.sh --list` · `-h` | show detected + installed targets · full help |
 
 Each target guards its own dependencies and is skipped with a clear message
 (rather than failing the whole run) if they're missing. Re-running is safe.
@@ -169,6 +171,20 @@ are in [claude-code/README.md](claude-code/README.md).
 
 Needs only Node.js (already present — Claude Code runs on it) and an active
 Claude Code login.
+
+### Updating
+
+To upgrade an existing install to the latest code:
+
+```bash
+./install.sh update --pull      # git pull, then reinstall whatever you have
+```
+
+`update` reinstalls only the targets already present (it detects them — see
+`./install.sh --list`), so it won't add clients you didn't install. `--pull`
+fast-forwards the checkout first. Per target: the **status line** takes effect in
+your next session; **GNOME** needs a log out / back in (Wayland); **macOS** quits
+the running app, replaces it in `/Applications`, and relaunches the new build.
 
 ## Settings
 
