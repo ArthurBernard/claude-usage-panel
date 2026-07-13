@@ -52,11 +52,26 @@ repos:
     hooks:
       - id: markdownlint
 
-  # Swift (uses the toolchain's built-in swift-format)
+  # GitHub Actions workflows — catch workflow bugs before they ship (the
+  # release.yml dispatch-tag bug would have been caught here).
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.7
+    hooks:
+      - id: actionlint
+
+  # Project-local guards
   - repo: local
     hooks:
+      # Swift (uses the toolchain's built-in swift-format)
       - id: swift-format
         name: swift-format lint
         language: system
         entry: swift format lint --strict
         files: \.swift$
+      # Version single-source: metadata.json / cask / install.sh must match package.json
+      - id: check-versions
+        name: version consistency
+        language: system
+        entry: scripts/check-versions.sh
+        pass_filenames: false
+        files: ^(package\.json|claude-usage-panel@fschmutz\.github\.io/metadata\.json|PUBLISHING\.md|install\.sh)$

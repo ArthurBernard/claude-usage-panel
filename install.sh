@@ -11,6 +11,9 @@
 #   ./install.sh update --pull             git pull --ff-only first, then upgrade
 #   ./install.sh --uninstall [target...]   reverse an install (default: all detected)
 #   ./install.sh --dry-run [target...]     print the actions without doing them (alias -n)
+#   ./install.sh macos --build-only        build the .app but don't install it (used by CI)
+#   ./install.sh statusline --segments=context,limits,tokens --tokens=all|fresh
+#                                          choose status-line segments + token mode
 #   ./install.sh --list             show detected + installed targets
 #   ./install.sh -h | --help
 #
@@ -35,6 +38,9 @@ ok() { printf '  \033[32mok\033[0m   %s\n' "$*"; }
 # heredoc merges (node/python) are guarded inline with `$DRY`.
 DRY=false
 PULL=false
+BUILD_ONLY=false # macos: build the .app but don't install to /Applications (used by CI)
+SL_SEGMENTS="context,limits,tokens" # statusline: which segments, left→right
+SL_TOKENS="all"                      # statusline: token-total mode (all|fresh)
 act() {
     if $DRY; then printf '  would: %s\n' "$*"; else "$@"; fi
 }
@@ -124,210 +130,6 @@ PY
 }
 
 # ── Claude Code status line ─────────────────────────────────────────────────────
-# Interactive configuration for the status line: a segment checklist and a
-# token-total radio, both with a live preview. Colors only on a real terminal.
-if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
-    SL_B=$'\033[1m'
-    SL_D=$'\033[2m'
-    SL_RS=$'\033[0m'
-    SL_CY=$'\033[36m'
-    SL_GN=$'\033[32m'
-else
-    SL_B=''
-    SL_D=''
-    SL_RS=''
-    SL_CY=''
-    SL_GN=''
-fi
-SL_SEG_KEYS="context limits tokens"
-SL_PREVIEW_STDIN=""
-SL_PREVIEW_TRANSCRIPT=""
-
-# Read one keypress into SL_KEY. Arrows arrive as ESC [ A; Enter reads as "" and
-# end-of-input as "EOF".
-sl_read_key() {
-    SL_KEY=""
-    IFS= read -rsn1 SL_KEY 2>/dev/null || {
-        SL_KEY="EOF"
-        return 0
-    }
-    if [ "$SL_KEY" = $'\033' ]; then
-        local rest=""
-        IFS= read -rsn2 -t 1 rest 2>/dev/null || rest=""
-        SL_KEY="$SL_KEY$rest"
-    fi
-    return 0
-}
-sl_cursor_hide() { if [ -t 1 ]; then printf '\033[?25l'; fi; }
-sl_cursor_show() { if [ -t 1 ]; then printf '\033[?25h'; fi; }
-sl_seg_desc() {
-    case "$1" in
-        context) printf 'context-window usage of this session' ;;
-        limits) printf 'Session (5 h) and Week (7 d) plan limits' ;;
-        tokens) printf '∑ total tokens this window has consumed' ;;
-    esac
-}
-
-# Render the real status line from representative sample data so previews match
-# what Claude Code will show. The temp transcript is global so a trap can clean
-# it up.
-sl_setup_preview() {
-    local now
-    now="$(date +%s)"
-    SL_PREVIEW_TRANSCRIPT="$(mktemp 2>/dev/null || printf '%s' "${TMPDIR:-/tmp}/clt-preview.$$")"
-    {
-        printf '%s\n' '{"type":"assistant","message":{"id":"1","usage":{"input_tokens":5200,"output_tokens":840,"cache_creation_input_tokens":3100,"cache_read_input_tokens":260000}}}'
-        printf '%s\n' '{"type":"assistant","message":{"id":"2","usage":{"input_tokens":6100,"output_tokens":1200,"cache_creation_input_tokens":0,"cache_read_input_tokens":290000}}}'
-        printf '%s\n' '{"type":"assistant","message":{"id":"3","usage":{"input_tokens":4300,"output_tokens":560,"cache_creation_input_tokens":1500,"cache_read_input_tokens":310000}}}'
-    } >"$SL_PREVIEW_TRANSCRIPT"
-    SL_PREVIEW_STDIN="$(printf '{"context_window":{"used_percentage":8},"rate_limits":{"five_hour":{"used_percentage":26,"resets_at":%s},"seven_day":{"used_percentage":24,"resets_at":%s}},"transcript_path":"%s"}' "$((now + 3540))" "$((now + 353000))" "$SL_PREVIEW_TRANSCRIPT")"
-}
-sl_preview() { # $1=dest  $2=segments  $3=tokens
-    local flags=(--segments="$2")
-    [ -n "$3" ] && flags+=(--tokens="$3")
-    printf '%s' "$SL_PREVIEW_STDIN" | node "$1" "${flags[@]}" 2>/dev/null || true
-}
-
-# Segment checklist. ↑/↓ move, space toggles, < > reorder, Enter confirms.
-# Reads/updates SL_SEGMENTS; $1 is the installed .mjs used for previews.
-sl_select_segments() {
-    local dest="$1" order=() enabled=() i k found j seg_list=()
-    for i in $SL_SEG_KEYS; do enabled+=("$i:0"); done
-    local OLDIFS="$IFS"
-    IFS=','
-    read -ra seg_list <<<"$SL_SEGMENTS"
-    IFS="$OLDIFS"
-    for k in "${seg_list[@]}"; do
-        [ -n "$k" ] || continue
-        for i in $SL_SEG_KEYS; do
-            if [ "$i" = "$k" ]; then
-                order+=("$i")
-                enabled=("${enabled[@]/$i:0/$i:1}")
-            fi
-        done
-    done
-    for i in $SL_SEG_KEYS; do
-        found=0
-        for j in "${order[@]:-}"; do [ "$j" = "$i" ] && found=1; done
-        [ "$found" = 0 ] && order+=("$i")
-    done
-    local cur=0 count=${#order[@]} rows=$((${#order[@]} + 2))
-    sl_is_on() { case " ${enabled[*]} " in *" $1:1 "*) return 0 ;; *) return 1 ;; esac }
-    sl_cur_segs() {
-        local n s=""
-        for n in "${order[@]}"; do sl_is_on "$n" && s="${s:+$s,}$n"; done
-        printf '%s' "$s"
-    }
-    sl_draw_segs() {
-        local n name box ptr
-        for n in "${order[@]}"; do
-            if sl_is_on "$n"; then box="${SL_GN}◉${SL_RS}"; else box="${SL_D}◯${SL_RS}"; fi
-            if [ "$n" = "${order[cur]}" ]; then
-                ptr="${SL_CY}❯${SL_RS}"
-                name="${SL_B}$(printf '%-7s' "$n")${SL_RS}"
-            else
-                ptr=' '
-                name="$(printf '%-7s' "$n")"
-            fi
-            printf '  %s %s %s %s%s%s\033[K\n' "$ptr" "$box" "$name" "$SL_D" "$(sl_seg_desc "$n")" "$SL_RS"
-        done
-        printf '  %s↑/↓ move · space toggle · < > reorder · enter confirm%s\033[K\n' "$SL_D" "$SL_RS"
-        printf '  %spreview%s  %s\033[K\n' "$SL_D" "$SL_RS" "$(sl_preview "$dest" "$(sl_cur_segs)" "$SL_TOKENS")"
-    }
-    sl_cursor_hide
-    sl_draw_segs
-    while :; do
-        sl_read_key
-        case "$SL_KEY" in
-            $'\033[A') if [ "$cur" -gt 0 ]; then cur=$((cur - 1)); fi ;;
-            $'\033[B') if [ "$cur" -lt $((count - 1)) ]; then cur=$((cur + 1)); fi ;;
-            ' ')
-                k="${order[cur]}"
-                if sl_is_on "$k"; then enabled=("${enabled[@]/$k:1/$k:0}"); else enabled=("${enabled[@]/$k:0/$k:1}"); fi
-                ;;
-            '<') if [ "$cur" -gt 0 ]; then
-                k="${order[cur]}"
-                order[cur]="${order[cur - 1]}"
-                order[cur - 1]="$k"
-                cur=$((cur - 1))
-            fi ;;
-            '>') if [ "$cur" -lt $((count - 1)) ]; then
-                k="${order[cur]}"
-                order[cur]="${order[cur + 1]}"
-                order[cur + 1]="$k"
-                cur=$((cur + 1))
-            fi ;;
-            '') if [ -n "$(sl_cur_segs)" ]; then break; fi ;;
-            EOF) break ;;
-        esac
-        printf '\033[%dA' "$rows"
-        sl_draw_segs
-    done
-    sl_cursor_show
-    SL_SEGMENTS="$(sl_cur_segs)"
-    [ -n "$SL_SEGMENTS" ] || SL_SEGMENTS="context,limits,tokens"
-}
-
-# Token-total radio (all / fresh), each with its live figure. ↑/↓ + Enter.
-sl_select_tokens() {
-    local dest="$1" cur=0 rows=3 pa pf
-    [ "$SL_TOKENS" = fresh ] && cur=1
-    pa="$(sl_preview "$dest" tokens all)"
-    pf="$(sl_preview "$dest" tokens fresh)"
-    sl_draw_tok() {
-        local p0 b0 p1 b1
-        if [ "$cur" = 0 ]; then
-            p0="${SL_CY}❯${SL_RS}"
-            b0="${SL_GN}◉${SL_RS}"
-        else
-            p0=' '
-            b0="${SL_D}◯${SL_RS}"
-        fi
-        if [ "$cur" = 1 ]; then
-            p1="${SL_CY}❯${SL_RS}"
-            b1="${SL_GN}◉${SL_RS}"
-        else
-            p1=' '
-            b1="${SL_D}◯${SL_RS}"
-        fi
-        printf '  %s %s %sall  %s %sincl. cache reads · true throughput%s  %s\033[K\n' "$p0" "$b0" "$SL_B" "$SL_RS" "$SL_D" "$SL_RS" "$pa"
-        printf '  %s %s %sfresh%s %sexcl. cache reads · new tokens only%s  %s\033[K\n' "$p1" "$b1" "$SL_B" "$SL_RS" "$SL_D" "$SL_RS" "$pf"
-        printf '  %s↑/↓ choose · enter confirm%s\033[K\n' "$SL_D" "$SL_RS"
-    }
-    sl_cursor_hide
-    sl_draw_tok
-    while :; do
-        sl_read_key
-        case "$SL_KEY" in
-            $'\033[A') if [ "$cur" -gt 0 ]; then cur=$((cur - 1)); fi ;;
-            $'\033[B') if [ "$cur" -lt 1 ]; then cur=$((cur + 1)); fi ;;
-            '' | EOF) break ;;
-        esac
-        printf '\033[%dA' "$rows"
-        sl_draw_tok
-    done
-    sl_cursor_show
-    if [ "$cur" = 1 ]; then SL_TOKENS=fresh; else SL_TOKENS=all; fi
-}
-
-# Drive the two menus; $1 is the installed .mjs. Sets SL_SEGMENTS / SL_TOKENS.
-_statusline_configure() {
-    SL_SEGMENTS="context,limits,tokens"
-    SL_TOKENS="all"
-    sl_setup_preview
-    trap 'rm -f "$SL_PREVIEW_TRANSCRIPT"; sl_cursor_show' EXIT
-    printf '  %sSegments%s %s— top-to-bottom is left-to-right on the line%s\n' "$SL_B" "$SL_RS" "$SL_D" "$SL_RS"
-    sl_select_segments "$1"
-    case ",$SL_SEGMENTS," in
-        *,tokens,*)
-            printf '  %sToken counter total%s\n' "$SL_B" "$SL_RS"
-            sl_select_tokens "$1"
-            ;;
-    esac
-    rm -f "$SL_PREVIEW_TRANSCRIPT"
-    trap - EXIT
-}
-
 install_statusline() {
     info "Claude Code status line"
     if ! command -v node >/dev/null; then
@@ -338,63 +140,71 @@ install_statusline() {
     local dest_dir="$HOME/.claude"
     # .mjs so Node always treats it as ESM regardless of any nearby package.json.
     local dest="$dest_dir/claude-usage-statusline.mjs"
+    local prev="$dest_dir/claude-usage-statusline.prev.json"
     act mkdir -p "$dest_dir"
     act cp "$src" "$dest"
     act chmod +x "$dest"
 
-    # Configure segments + token total interactively (a real terminal only);
-    # scripted / piped / dry-run installs take the defaults.
-    local segments="context,limits,tokens" tokens_mode="all"
-    if ! $DRY && [ -t 0 ] && [ -t 1 ]; then
-        _statusline_configure "$dest"
-        segments="$SL_SEGMENTS"
-        tokens_mode="$SL_TOKENS"
-    fi
-    local command="node \"$dest\" --segments=$segments --tokens=$tokens_mode"
+    # Which segments to render and the token-total mode are baked into the
+    # installed command from --segments= / --tokens= (defaults below). Kept
+    # non-interactive by design: pipe-safe, re-runnable, no tty handling.
+    local command="node \"$dest\" --segments=$SL_SEGMENTS --tokens=$SL_TOKENS"
 
     if $DRY; then
         echo "  would: merge statusLine → $command into $dest_dir/settings.json"
+        echo "  would: back up any existing (foreign) statusLine to $prev for --uninstall to restore"
         ok "dry-run: no changes written"
         return 0
     fi
     # Merge the statusLine key with Node so an existing settings.json is never
-    # corrupted; all other keys are preserved.
-    COMMAND="$command" node - "$dest_dir/settings.json" <<'JS'
+    # corrupted; all other keys are preserved. If we replace a FOREIGN status
+    # line (someone's own), stash it in $prev so --uninstall can put it back.
+    COMMAND="$command" PREV="$prev" node - "$dest_dir/settings.json" <<'JS'
 const fs = require('fs');
 const path = process.argv[2];
 let settings = {};
 try { settings = JSON.parse(fs.readFileSync(path, 'utf8')); } catch { /* fresh */ }
 const existing = settings.statusLine;
+const ours = existing && /claude-usage-statusline\.mjs/.test(existing.command || '');
+if (existing && !ours) {
+  fs.writeFileSync(process.env.PREV, JSON.stringify(existing, null, 2) + '\n');
+  console.log('  backed up your previous statusLine → restored on `--uninstall statusline`');
+}
 settings.statusLine = {type: 'command', command: process.env.COMMAND};
 fs.writeFileSync(path, JSON.stringify(settings, null, 2) + '\n');
-if (existing && existing.command !== settings.statusLine.command)
-  console.log('  replaced an existing statusLine command: ' + (existing.command || JSON.stringify(existing)));
 JS
-    ok "installed to $dest and merged statusLine into $dest_dir/settings.json"
+    ok "installed to $dest (segments: $SL_SEGMENTS, tokens: $SL_TOKENS)"
+    echo "  Customize: re-run with --segments=context,limits,tokens and --tokens=all|fresh."
     echo "  Open a Claude Code session or run /statusline to see it."
 }
 
 uninstall_statusline() {
     info "Claude Code status line"
     local dest_dir="$HOME/.claude"
+    local prev="$dest_dir/claude-usage-statusline.prev.json"
     act rm -f "$dest_dir/claude-usage-statusline.mjs"
     if $DRY; then
-        echo "  would: drop our statusLine entry from $dest_dir/settings.json (foreign ones kept)"
+        echo "  would: drop our statusLine from $dest_dir/settings.json, restoring $prev if present"
         ok "dry-run: no changes written"
         return 0
     fi
-    # Remove only OUR statusLine entry (leave a foreign one untouched).
+    # Remove only OUR statusLine entry; if we had backed up a foreign one at
+    # install time, restore it instead of leaving none.
     if command -v node >/dev/null && [ -f "$dest_dir/settings.json" ]; then
-        node - "$dest_dir/settings.json" <<'JS'
+        PREV="$prev" node - "$dest_dir/settings.json" <<'JS'
 const fs = require('fs');
 const path = process.argv[2];
 let s; try { s = JSON.parse(fs.readFileSync(path, 'utf8')); } catch { process.exit(0); }
 if (s.statusLine && /claude-usage-statusline\.mjs/.test(s.statusLine.command || '')) {
-  delete s.statusLine;
+  let restored = false;
+  try { s.statusLine = JSON.parse(fs.readFileSync(process.env.PREV, 'utf8')); restored = true; }
+  catch { delete s.statusLine; }
   fs.writeFileSync(path, JSON.stringify(s, null, 2) + '\n');
+  console.log(restored ? '  restored your previous statusLine' : '  removed our statusLine');
 }
 JS
     fi
+    act rm -f "$prev"
     ok "removed"
 }
 
@@ -450,6 +260,12 @@ PLIST
     # (see PUBLISHING.md). The signature is preserved by the copy below.
     codesign --deep --force --sign - "$bundle" >/dev/null 2>&1 || true
     ok "built $bundle (v$ver)"
+
+    # CI builds the bundle only (to zip as a release asset) — no /Applications.
+    if $BUILD_ONLY; then
+        ok "build-only: skipped /Applications install"
+        return 0
+    fi
 
     # Make it perpetual: install into /Applications and launch it. On first run
     # the app registers itself as a login item (toggle in Settings ▸ Start at login).
@@ -524,6 +340,9 @@ for arg in "$@"; do
         update) action=update ;;
         --uninstall) action=uninstall ;;
         --pull) PULL=true ;;
+        --build-only) BUILD_ONLY=true ;;
+        --segments=*) SL_SEGMENTS="${arg#*=}" ;;
+        --tokens=*) SL_TOKENS="${arg#*=}" ;;
         --dry-run | -n) DRY=true ;;
         --list) action=list ;;
         -*)
