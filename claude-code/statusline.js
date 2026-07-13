@@ -20,7 +20,7 @@ const USAGE_ENDPOINT = 'https://api.anthropic.com/api/oauth/usage';
 const OAUTH_BETA_HEADER = 'oauth-2025-04-20';
 const CREDENTIALS_PATH = path.join(os.homedir(), '.claude', '.credentials.json');
 const CACHE_PATH = path.join(os.tmpdir(), 'claude-usage-statusline.json');
-const CACHE_TTL_MS = 120_000; // the usage endpoint is rate-limited; don't poll it hard
+export const CACHE_TTL_MS = 120_000; // the usage endpoint is rate-limited; don't poll it hard
 const FETCH_TIMEOUT_MS = 4_000;
 
 // Short labels + ordering for the limit kinds the endpoint returns. Kept
@@ -139,12 +139,13 @@ export function normalizeUsage(payload) {
 }
 
 // Returns {raw, fresh}: raw is the last cached payload (even when stale); fresh
-// says whether it's within the TTL. null when there's no cache at all.
-function readCache() {
+// says whether it's within the TTL. null when there's no cache at all. `path`
+// and `nowMs` are injectable so the cache logic is unit-testable.
+export function readCache(path = CACHE_PATH, nowMs = Date.now()) {
   try {
-    const stat = fs.statSync(CACHE_PATH);
-    const raw = JSON.parse(fs.readFileSync(CACHE_PATH, 'utf8'));
-    return {raw, fresh: Date.now() - stat.mtimeMs <= CACHE_TTL_MS};
+    const stat = fs.statSync(path);
+    const raw = JSON.parse(fs.readFileSync(path, 'utf8'));
+    return {raw, fresh: nowMs - stat.mtimeMs <= CACHE_TTL_MS};
   } catch {
     return null;
   }
@@ -152,16 +153,16 @@ function readCache() {
 
 // Bump the cache mtime so a failed fetch backs off for another TTL instead of
 // re-hitting (and re-triggering) a rate-limited endpoint on every refresh.
-function touchCache() {
+export function touchCache(path = CACHE_PATH, nowMs = Date.now()) {
   try {
-    const now = Date.now() / 1000;
-    fs.utimesSync(CACHE_PATH, now, now);
+    const secs = nowMs / 1000;
+    fs.utimesSync(path, secs, secs);
   } catch {}
 }
 
-function writeCache(raw) {
+export function writeCache(raw, path = CACHE_PATH) {
   try {
-    fs.writeFileSync(CACHE_PATH, JSON.stringify(raw), {mode: 0o600});
+    fs.writeFileSync(path, JSON.stringify(raw), {mode: 0o600});
   } catch {
     // A read-only tmp dir just means no cache; not fatal.
   }

@@ -1,8 +1,12 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 import {
     normalizeUsage, gauge, resetHint, render, contextSegment, cardsFromStdin,
+    readCache, writeCache, touchCache, CACHE_TTL_MS,
 } from '../claude-code/statusline.js';
 
 // Strip ANSI so we can assert on the visible glyphs. Built via RegExp
@@ -97,4 +101,53 @@ test('cardsFromStdin builds Session/Week cards from rate_limits', () => {
     assert.match(strip(render(cards)), /Session [█▏▎▍▌▋▊▉░]{6} 14% \dh\d{2}m/);
     assert.deepEqual(cardsFromStdin('{}'), []);
     assert.deepEqual(cardsFromStdin('not json'), []);
+});
+
+// A unique temp cache path per invocation, cleaned up after each test.
+const rnd = () => Math.random().toString(36).slice(2);
+const tmpCache = () => path.join(os.tmpdir(), `cus-test-${rnd()}${rnd()}.json`);
+
+test('writeCache round-trips through readCache', () => {
+    const p = tmpCache();
+    try {
+        assert.equal(readCache(p), null); // nothing cached yet
+        writeCache({limits: [{kind: 'session', percent: 7}]}, p);
+        const got = readCache(p);
+        assert.deepEqual(got.raw, {limits: [{kind: 'session', percent: 7}]});
+        assert.equal(got.fresh, true);
+    } finally {
+        fs.rmSync(p, {force: true});
+    }
+});
+
+test('readCache freshness flips exactly at the TTL boundary', () => {
+    const p = tmpCache();
+    try {
+        writeCache({ok: 1}, p);
+        const mtime = fs.statSync(p).mtimeMs;
+        assert.equal(readCache(p, mtime + CACHE_TTL_MS).fresh, true); // <= TTL: fresh
+        assert.equal(readCache(p, mtime + CACHE_TTL_MS + 1).fresh, false); // past TTL: stale
+        assert.deepEqual(readCache(p, mtime + 10 * CACHE_TTL_MS).raw, {ok: 1}); // stale still returns data
+    } finally {
+        fs.rmSync(p, {force: true});
+    }
+});
+
+test('touchCache backs off by advancing mtime, keeping the payload', () => {
+    const p = tmpCache();
+    try {
+        writeCache({ok: 1}, p);
+        const t0 = fs.statSync(p).mtimeMs;
+        const later = t0 + 5 * CACHE_TTL_MS;
+        // Simulate a failed fetch that backs off: touch to "now" = later.
+        touchCache(p, later);
+        // At `later` the cache reads fresh again (mtime moved forward), so the
+        // next refresh won't re-hit the rate-limited endpoint.
+        const got = readCache(p, later);
+        assert.equal(got.fresh, true);
+        assert.deepEqual(got.raw, {ok: 1});
+        assert.ok(fs.statSync(p).mtimeMs >= t0 + 4 * CACHE_TTL_MS); // mtime advanced
+    } finally {
+        fs.rmSync(p, {force: true});
+    }
 });
