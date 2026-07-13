@@ -44,6 +44,9 @@ final class UsageModel: ObservableObject {
     @Published var alertsEnabled: Bool {
         didSet { UserDefaults.standard.set(alertsEnabled, forKey: "alertsEnabled") }
     }
+    @Published var launchAtLogin: Bool {
+        didSet { LoginItem.setEnabled(launchAtLogin) }
+    }
     @Published var cursorEnabled: Bool {
         didSet {
             UserDefaults.standard.set(cursorEnabled, forKey: "cursorEnabled")
@@ -70,6 +73,19 @@ final class UsageModel: ObservableObject {
         cursorEnabled = UserDefaults.standard.bool(forKey: "cursorEnabled")
         cursorApiKey = UserDefaults.standard.string(forKey: "cursorApiKey") ?? ""
         history = (UserDefaults.standard.dictionary(forKey: "history") as? [String: [Int]]) ?? [:]
+        launchAtLogin = LoginItem.isEnabled
+
+        // First launch: register the login item by default, matching the GNOME
+        // extension's auto-enable. Only once — a later user opt-out is respected.
+        // (didSet does not fire from init, so register explicitly.)
+        if !UserDefaults.standard.bool(forKey: "didAutoRegisterLogin") {
+            UserDefaults.standard.set(true, forKey: "didAutoRegisterLogin")
+            if !launchAtLogin {
+                LoginItem.setEnabled(true)
+                launchAtLogin = LoginItem.isEnabled
+            }
+        }
+
         restart()  // didSet does not fire from init, so start the loop explicitly
     }
 
@@ -393,6 +409,7 @@ struct SettingsView: View {
                 }
                 Toggle("Limit-crossing alerts (90% / 100%)", isOn: $model.alertsEnabled)
                 Toggle("Show session cost (ccusage)", isOn: $model.showCost)
+                Toggle("Start at login", isOn: $model.launchAtLogin)
             }
             Section("Cursor (optional)") {
                 Toggle("Show Cursor team spend", isOn: $model.cursorEnabled)
