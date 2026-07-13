@@ -198,6 +198,7 @@ install_macos() {
     ver="$(version)"
     if $DRY; then
         echo "  would: swift build -c release + assemble $bundle (v$ver)"
+        echo "  would: ad-hoc codesign, cp -R to /Applications/$app.app, open it"
         ok "dry-run: no build performed"
         return 0
     fi
@@ -227,15 +228,31 @@ install_macos() {
 </plist>
 PLIST
     )
+    # Ad-hoc sign so "Start at login" (SMAppService) and Gatekeeper accept the
+    # bundle for personal use; a Developer ID is only needed to distribute it
+    # (see PUBLISHING.md). The signature is preserved by the copy below.
+    codesign --deep --force --sign - "$bundle" >/dev/null 2>&1 || true
     ok "built $bundle (v$ver)"
-    echo "  Run it:  open '$bundle'"
-    echo "  Sign it: codesign --deep --force --sign - '$bundle'   # ad-hoc; see PUBLISHING.md"
+
+    # Make it perpetual: install into /Applications and launch it. On first run
+    # the app registers itself as a login item (toggle in Settings ▸ Start at login).
+    local installed="/Applications/$app.app"
+    if rm -rf "$installed" 2>/dev/null && cp -R "$bundle" "$installed" 2>/dev/null; then
+        open "$installed" 2>/dev/null || true
+        ok "installed to $installed and launched"
+        echo "  Starts at login by default — toggle it in Settings ▸ Start at login."
+    else
+        echo "  Could not write /Applications (needs admin). Install it yourself:"
+        echo "    sudo cp -R '$bundle' '$installed' && open '$installed'"
+    fi
 }
 
 uninstall_macos() {
     info "macOS app"
     act rm -rf "$ROOT/macos/ClaudeUsagePanel.app"
-    ok "removed built bundle (source untouched)"
+    act rm -rf "/Applications/ClaudeUsagePanel.app"
+    ok "removed built + installed bundles (source untouched)"
+    echo "  If it was set to start at login, remove it in System Settings ▸ General ▸ Login Items."
 }
 
 # ── Target resolution ───────────────────────────────────────────────────────────
