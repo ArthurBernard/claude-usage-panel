@@ -1,36 +1,28 @@
 #!/usr/bin/env node
-// Claude Code status line: a condensed, one-line view of your Claude plan
-// usage, rendered just under the prompt input. It reads only what Claude Code
-// pipes on stdin — the context window, the account Session (5 h) / Week (7 d)
-// rate limits, and the session transcript for a token total — so it needs no
-// credentials, no network, and no cache of its own.
-//
-// The `normalizeUsage` and cache helpers below are retained (and covered by the
-// cross-port parity and cache unit tests) as the shared normalization contract
-// with the GNOME extension (lib/pure.js) and the macOS app; the status line
-// itself renders from stdin. Output is left-aligned (Claude Code anchors the
-// status line to the left; use the settings `padding` field to indent it).
+// Claude Code status line: a condensed, one-line view of your Claude plan usage,
+// rendered just under the prompt input. It reads ONLY what Claude Code pipes on
+// stdin — the context window, the account Session (5 h) / Week (7 d) rate limits,
+// and the session transcript for a token total — so it needs no credentials and
+// no network. This is deliberately the cheap terminal projection: per-model
+// (e.g. Fable) weekly limits and API severity are API-only and shown only by the
+// GNOME extension and the macOS app, never here. Output is left-aligned (Claude
+// Code anchors the line to the left; use the settings `padding` field to indent).
 
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-const CACHE_PATH = path.join(os.tmpdir(), 'claude-usage-statusline.json');
-export const CACHE_TTL_MS = 120_000; // TTL for the shared on-disk cache helpers
+// Compact per-transcript token sums are cached here so a multi-MB JSONL isn't
+// re-read and re-parsed on every refresh (see transcriptTotals).
+const TOKENS_CACHE_PATH = path.join(os.tmpdir(), 'claude-usage-statusline-tokens.json');
 
-// Short labels + ordering for the limit kinds the endpoint returns. Kept
-// terse because the status line has little horizontal room.
-const KIND_LABELS = {
-  session: 'Session',
-  weekly_all: 'Week',
-  weekly_scoped: 'Week',
-  weekly_oauth_apps: 'Apps',
-};
-const KIND_ORDER = ['session', 'weekly_all', 'weekly_scoped', 'weekly_oauth_apps'];
+// Short labels for the two rate-limit windows stdin exposes. Terse because the
+// status line has little horizontal room.
+const KIND_LABELS = {session: 'Session', weekly_all: 'Week'};
 
-// ANSI palette. The status line renders ANSI, so we color each gauge by the
-// API's own severity — green while healthy, yellow warning, red critical.
+// ANSI palette. Each gauge is colored by severity — green healthy, yellow
+// warning, red critical.
 const SEV_COLOR = {
   normal: '\x1b[32m', // green
   warning: '\x1b[33m', // yellow
@@ -45,83 +37,6 @@ const FULL = '█';
 const FRACTIONS = ['', '▏', '▎', '▍', '▌', '▋', '▊', '▉'];
 const EMPTY = '░';
 const GAUGE_WIDTH = 6;
-
-function normalizeLimit(entry) {
-  const model = entry.scope?.model?.display_name;
-  // For per-model limits the model name alone is the most informative and
-  // compact label; otherwise use the short kind label.
-  const label = model ?? KIND_LABELS[entry.kind] ?? entry.kind;
-  return {
-    kind: entry.kind,
-    label,
-    percent: Math.max(0, Math.min(100, Math.round(Number(entry.percent) || 0))),
-    severity: entry.severity ?? 'normal',
-    resetsAt: entry.resets_at ?? null,
-    active: Boolean(entry.is_active),
-  };
-}
-
-export function normalizeUsage(payload) {
-  if (Array.isArray(payload?.limits) && payload.limits.length) {
-    return payload.limits.map(normalizeLimit).sort((a, b) => {
-      const ai = KIND_ORDER.indexOf(a.kind);
-      const bi = KIND_ORDER.indexOf(b.kind);
-      return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
-    });
-  }
-  const cards = [];
-  if (Number.isFinite(Number(payload?.five_hour?.utilization))) {
-    cards.push({
-      kind: 'session',
-      label: KIND_LABELS.session,
-      percent: Math.round(payload.five_hour.utilization),
-      severity: 'normal',
-      resetsAt: payload.five_hour.resets_at ?? null,
-      active: true,
-    });
-  }
-  if (Number.isFinite(Number(payload?.seven_day?.utilization))) {
-    cards.push({
-      kind: 'weekly_all',
-      label: KIND_LABELS.weekly_all,
-      percent: Math.round(payload.seven_day.utilization),
-      severity: 'normal',
-      resetsAt: payload.seven_day.resets_at ?? null,
-      active: false,
-    });
-  }
-  return cards;
-}
-
-// Returns {raw, fresh}: raw is the last cached payload (even when stale); fresh
-// says whether it's within the TTL. null when there's no cache at all. `path`
-// and `nowMs` are injectable so the cache logic is unit-testable.
-export function readCache(path = CACHE_PATH, nowMs = Date.now()) {
-  try {
-    const stat = fs.statSync(path);
-    const raw = JSON.parse(fs.readFileSync(path, 'utf8'));
-    return {raw, fresh: nowMs - stat.mtimeMs <= CACHE_TTL_MS};
-  } catch {
-    return null;
-  }
-}
-
-// Bump the cache mtime so a failed fetch backs off for another TTL instead of
-// re-hitting (and re-triggering) a rate-limited endpoint on every refresh.
-export function touchCache(path = CACHE_PATH, nowMs = Date.now()) {
-  try {
-    const secs = nowMs / 1000;
-    fs.utimesSync(path, secs, secs);
-  } catch {}
-}
-
-export function writeCache(raw, path = CACHE_PATH) {
-  try {
-    fs.writeFileSync(path, JSON.stringify(raw), {mode: 0o600});
-  } catch {
-    // A read-only tmp dir just means no cache; not fatal.
-  }
-}
 
 // "Resets in 3h06m" / "4d2h" — compact, only the two most significant units.
 export function resetHint(resetsAt) {
@@ -138,9 +53,12 @@ export function resetHint(resetsAt) {
 }
 
 // A compact fixed-width bar whose fill (colored by severity) tracks the
-// percentage down to 1/8 of a cell, with the remainder dimmed.
+// percentage down to 1/8 of a cell, with the remainder dimmed. The percent is
+// clamped to [0,100] here so no caller can overflow the width or (with a
+// negative value) drive FULL.repeat() to throw — the line must never crash.
 export function gauge(percent, color) {
-  const eighths = Math.round((percent / 100) * GAUGE_WIDTH * 8);
+  const p = Math.max(0, Math.min(100, Number(percent) || 0));
+  const eighths = Math.round((p / 100) * GAUGE_WIDTH * 8);
   const full = Math.floor(eighths / 8);
   const rem = eighths % 8;
   const bar = FULL.repeat(full) + (rem ? FRACTIONS[rem] : '');
@@ -148,30 +66,7 @@ export function gauge(percent, color) {
   return `${color}${bar}${DIM}${empty}${RESET}`;
 }
 
-export function render(cards) {
-  const active = cards.filter((c) => c.active || c.percent > 0);
-  const shown = active.length ? active : cards;
-  if (!shown.length) return '';
-
-  // A reset countdown is shown once, after the LAST limit that displays the same
-  // value — so a weekly reset shared by Week and each per-model card (whose raw
-  // timestamps differ by microseconds but render identically) isn't repeated.
-  const hints = shown.map((c) => resetHint(c.resetsAt));
-  const lastWithHint = new Map();
-  hints.forEach((h, i) => {
-    if (h) lastWithHint.set(h, i);
-  });
-
-  return shown
-    .map((c, i) => {
-      const color = SEV_COLOR[c.severity] ?? SEV_COLOR.normal;
-      const reset = lastWithHint.get(hints[i]) === i ? `${DIM}${hints[i]}${RESET}` : '';
-      return `${c.label} ${gauge(c.percent, color)} ${color}${c.percent}%${RESET}${reset}`;
-    })
-    .join('  ');
-}
-
-// Severity for values that carry no API severity (context, stdin fallback):
+// Severity for values that carry no API severity (context, stdin rate limits):
 // green under 70 %, yellow up to 90 %, red above.
 const thresholdSeverity = (p) => (p >= 90 ? 'critical' : p >= 70 ? 'warning' : 'normal');
 
@@ -186,14 +81,14 @@ export function contextSegment(stdinText) {
     return '';
   }
   if (!Number.isFinite(Number(pct))) return '';
-  const p = Math.round(Number(pct));
+  const p = Math.max(0, Math.min(100, Math.round(Number(pct))));
   const color = SEV_COLOR[thresholdSeverity(p)];
   return `Context ${gauge(p, color)} ${color}${p}%${RESET}`;
 }
 
-// Fallback source: the Session (five_hour) and Week (seven_day) rate limits
-// Claude Code passes on stdin. No per-model (Fable) and no severity, so colors
-// use a local threshold; resets_at is epoch seconds and converted to ISO.
+// The Session (five_hour) and Week (seven_day) rate limits Claude Code passes on
+// stdin. No per-model card and no API severity, so colors use a local threshold;
+// resets_at is epoch seconds and converted to ISO.
 export function cardsFromStdin(stdinText) {
   let rl;
   try {
@@ -221,18 +116,44 @@ export function cardsFromStdin(stdinText) {
   return cards;
 }
 
-// Compact token count: 847 → "847", 16_700 → "16.7k", 1_240_000 → "1.2M".
+export function render(cards) {
+  const active = cards.filter((c) => c.active || c.percent > 0);
+  const shown = active.length ? active : cards;
+  if (!shown.length) return '';
+
+  // A reset countdown is shown once, after the LAST limit that displays the same
+  // value — so a weekly reset shared by several cards isn't repeated.
+  const hints = shown.map((c) => resetHint(c.resetsAt));
+  const lastWithHint = new Map();
+  hints.forEach((h, i) => {
+    if (h) lastWithHint.set(h, i);
+  });
+
+  return shown
+    .map((c, i) => {
+      const color = SEV_COLOR[c.severity] ?? SEV_COLOR.normal;
+      const reset = lastWithHint.get(hints[i]) === i ? `${DIM}${hints[i]}${RESET}` : '';
+      return `${c.label} ${gauge(c.percent, color)} ${color}${c.percent}%${RESET}${reset}`;
+    })
+    .join('  ');
+}
+
+// Compact token count: 847 → "847", 16_700 → "16.7k", 1_240_000 → "1.2M". Guards
+// the unit boundary so 999_999 promotes to "1.0M" rather than "1000.0k".
 export function formatTokens(n) {
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}k`;
+  if (n >= 1e3) {
+    const k = (n / 1e3).toFixed(1);
+    return k === '1000.0' ? '1.0M' : `${k}k`;
+  }
   return String(n);
 }
 
 // Sum every token each assistant turn consumed — prompt, cache writes, cache
-// reads and completion — across all assistant messages in the session
-// transcript (a JSONL, one message per line). Deduped by message id so a
-// replayed line isn't counted twice. Cache reads dominate a long session, so
-// this is the true throughput; pass includeCacheRead=false for "fresh" tokens.
+// reads and completion — across all assistant messages in the session transcript
+// (a JSONL, one message per line). Deduped by message id so a replayed line
+// isn't counted twice. Cache reads dominate a long session, so this is the true
+// throughput; pass includeCacheRead=false for "fresh" tokens.
 export function sumTranscriptTokens(jsonlText, includeCacheRead = true) {
   let total = 0;
   const seen = new Set();
@@ -259,14 +180,56 @@ export function sumTranscriptTokens(jsonlText, includeCacheRead = true) {
   return total;
 }
 
-// The "∑ N tok" total-tokens card: the cumulative tokens this window has
-// consumed. Reads the session transcript Claude Code points to on stdin
-// (transcript_path) and sums each turn's usage. Returns '' when the path is
-// absent (e.g. before the first turn) or unreadable. readFile is injectable so
-// the parsing can be unit-tested without touching disk.
+// {all, fresh} token totals for a transcript, cached on disk keyed by the file's
+// path+mtime+size. Claude Code re-invokes this command on every refresh and a
+// long transcript is tens of MB, so without this each refresh would re-read and
+// re-parse the whole JSONL. Returns null when the transcript isn't on disk yet.
+// stat/read/cachePath are injectable for tests.
+export function transcriptTotals(p, {
+  statFile = fs.statSync,
+  readFile = (f) => fs.readFileSync(f, 'utf8'),
+  cachePath = TOKENS_CACHE_PATH,
+} = {}) {
+  let sig;
+  try {
+    const st = statFile(p);
+    sig = `${p}:${st.mtimeMs}:${st.size}`;
+  } catch {
+    return null; // transcript not on disk yet, or not readable
+  }
+  try {
+    const cached = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
+    if (cached && cached.sig === sig) return cached;
+  } catch {
+    // no cache, unreadable, or a different transcript — recompute below.
+  }
+  let text;
+  try {
+    text = readFile(p);
+  } catch {
+    return null;
+  }
+  const totals = {
+    sig,
+    all: sumTranscriptTokens(text, true),
+    fresh: sumTranscriptTokens(text, false),
+  };
+  try {
+    fs.writeFileSync(cachePath, JSON.stringify(totals), {mode: 0o600});
+  } catch {
+    // A read-only tmp dir just means no cache; not fatal.
+  }
+  return totals;
+}
+
+// The "∑ N tok" card: cumulative tokens this window has consumed, from the
+// transcript Claude Code points to on stdin (transcript_path). Returns '' when
+// the path is absent (before the first turn) or unreadable.
 export function tokensSegment(stdinText, {
   includeCacheRead = true,
-  readFile = (p) => fs.readFileSync(p, 'utf8'),
+  statFile,
+  readFile,
+  cachePath,
 } = {}) {
   let p;
   try {
@@ -275,13 +238,9 @@ export function tokensSegment(stdinText, {
     return '';
   }
   if (!p) return '';
-  let text;
-  try {
-    text = readFile(p);
-  } catch {
-    return ''; // transcript not on disk yet, or not readable
-  }
-  const total = sumTranscriptTokens(text, includeCacheRead);
+  const totals = transcriptTotals(p, {statFile, readFile, cachePath});
+  if (!totals) return '';
+  const total = includeCacheRead ? totals.all : totals.fresh;
   if (!total) return '';
   return `${DIM}∑ ${formatTokens(total)} tok${RESET}`;
 }
@@ -296,8 +255,8 @@ const SEGMENTS = {
 const DEFAULT_SEGMENTS = ['context', 'limits', 'tokens'];
 
 // Configure the line from the command's argv (install.sh bakes these into the
-// settings.json command): `--segments=a,b,c` picks which segments to show and
-// in what order; `--tokens=fresh` sums only new tokens (excludes cache reads).
+// settings.json command): `--segments=a,b,c` picks which segments to show and in
+// what order; `--tokens=fresh` sums only new tokens (excludes cache reads).
 // Unknown segment names are dropped; an empty/missing list falls back to all.
 export function parseConfig(argv) {
   const cfg = {segments: DEFAULT_SEGMENTS, includeCacheRead: true};
@@ -327,9 +286,8 @@ function main() {
   const cfg = parseConfig(process.argv.slice(2));
   const stdin = readStdin();
   // Claude Code left-anchors the status line (indent via the settings `padding`
-  // field), so we just emit the chosen segments, in order, left-aligned. Context
-  // is always available; Session/Week appear once Claude Code provides
-  // rate_limits (Pro/Max, after the first API response of the session).
+  // field), so we emit the chosen segments in order, left-aligned. Context is
+  // always available; Session/Week appear once Claude Code provides rate_limits.
   const parts = cfg.segments.map((key) => SEGMENTS[key](stdin, cfg)).filter(Boolean);
   process.stdout.write(parts.join('  '));
 }
