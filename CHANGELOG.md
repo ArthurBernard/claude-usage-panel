@@ -8,6 +8,14 @@ semantic versioning.
 
 ### Added
 
+- Releases now also carry the **macOS `.app`** (built on a macOS runner, ad-hoc
+  signed, zipped) alongside the GNOME extension zip.
+- The status-line installer **backs up an existing (foreign) status line** and
+  `--uninstall statusline` **restores it**, instead of silently clobbering it.
+- **Version-drift guard** (`scripts/check-versions.sh`, run in pre-commit + CI):
+  fails if `metadata.json` / the cask / `install.sh` disagree with `package.json`.
+- **actionlint** in pre-commit, so workflow bugs are caught before they ship.
+- `install.sh macos --build-only` builds the bundle without installing it (CI).
 - **Automated GitHub Releases**: pushing a `v*` tag now runs
   `.github/workflows/release.yml`, which builds the GNOME `.shell-extension.zip`,
   pulls the version's notes from `CHANGELOG.md`, and publishes the Release with
