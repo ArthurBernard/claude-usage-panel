@@ -1,27 +1,23 @@
 #!/usr/bin/env node
 // Claude Code status line: a condensed, one-line view of your Claude plan
-// usage, rendered just under the prompt input. Mirrors the data layer of the
-// GNOME extension (lib/claudeUsage.js) and the macOS app — read-only, talks
-// only to api.anthropic.com, and never writes your credentials back.
+// usage, rendered just under the prompt input. It reads only what Claude Code
+// pipes on stdin — the context window, the account Session (5 h) / Week (7 d)
+// rate limits, and the session transcript for a token total — so it needs no
+// credentials, no network, and no cache of its own.
 //
-// Claude Code runs this on every status-line refresh and passes a session JSON
-// on stdin, from which we read the context-window usage. Output is left-aligned
-// (Claude Code anchors the status line to the left; use the settings `padding`
-// field to indent it). To avoid hammering the usage endpoint, successful
-// responses are cached on disk for CACHE_TTL_MS.
+// The `normalizeUsage` and cache helpers below are retained (and covered by the
+// cross-port parity and cache unit tests) as the shared normalization contract
+// with the GNOME extension (lib/pure.js) and the macOS app; the status line
+// itself renders from stdin. Output is left-aligned (Claude Code anchors the
+// status line to the left; use the settings `padding` field to indent it).
 
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
-const USAGE_ENDPOINT = 'https://api.anthropic.com/api/oauth/usage';
-const OAUTH_BETA_HEADER = 'oauth-2025-04-20';
-const CREDENTIALS_PATH = path.join(os.homedir(), '.claude', '.credentials.json');
 const CACHE_PATH = path.join(os.tmpdir(), 'claude-usage-statusline.json');
-export const CACHE_TTL_MS = 120_000; // the usage endpoint is rate-limited; don't poll it hard
-const FETCH_TIMEOUT_MS = 4_000;
+export const CACHE_TTL_MS = 120_000; // TTL for the shared on-disk cache helpers
 
 // Short labels + ordering for the limit kinds the endpoint returns. Kept
 // terse because the status line has little horizontal room.
@@ -49,47 +45,6 @@ const FULL = '█';
 const FRACTIONS = ['', '▏', '▎', '▍', '▌', '▋', '▊', '▉'];
 const EMPTY = '░';
 const GAUGE_WIDTH = 6;
-
-function tokenFromJSON(text) {
-  try {
-    const json = JSON.parse(text);
-    const oauth = json.claudeAiOauth ?? json;
-    return oauth.accessToken ?? oauth.access_token ?? oauth.token ?? null;
-  } catch {
-    return null;
-  }
-}
-
-// On macOS, Claude Code stores its credentials JSON as a generic-password
-// Keychain item instead of a file. Mirrors the macOS app's lookup.
-function tokenFromKeychain() {
-  if (process.platform !== 'darwin') return null;
-  for (const service of ['Claude Code-credentials', 'Claude Code', 'claude']) {
-    try {
-      const raw = execFileSync('security', ['find-generic-password', '-s', service, '-w'], {
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      });
-      const token = tokenFromJSON(raw);
-      if (token) return token;
-    } catch {
-      // Item not found under this service name; try the next.
-    }
-  }
-  return null;
-}
-
-// On Linux the token lives in ~/.claude/.credentials.json; on macOS it lives
-// in the login Keychain. Try the file first, then fall back to the Keychain.
-function readAccessToken() {
-  try {
-    const token = tokenFromJSON(fs.readFileSync(CREDENTIALS_PATH, 'utf8'));
-    if (token) return token;
-  } catch {
-    // No file (typical on macOS) — fall through to the Keychain.
-  }
-  return tokenFromKeychain();
-}
 
 function normalizeLimit(entry) {
   const model = entry.scope?.model?.display_name;
@@ -165,27 +120,6 @@ export function writeCache(raw, path = CACHE_PATH) {
     fs.writeFileSync(path, JSON.stringify(raw), {mode: 0o600});
   } catch {
     // A read-only tmp dir just means no cache; not fatal.
-  }
-}
-
-async function fetchUsage(token) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    const res = await fetch(USAGE_ENDPOINT, {
-      headers: {
-        authorization: `Bearer ${token}`,
-        'anthropic-beta': OAUTH_BETA_HEADER,
-      },
-      signal: controller.signal,
-    });
-    if (res.status === 401 || res.status === 403) return {error: 'session expired'};
-    if (!res.ok) return {error: `HTTP ${res.status}`};
-    return {raw: await res.json()};
-  } catch {
-    return {error: 'offline'};
-  } finally {
-    clearTimeout(timer);
   }
 }
 
@@ -287,6 +221,100 @@ export function cardsFromStdin(stdinText) {
   return cards;
 }
 
+// Compact token count: 847 → "847", 16_700 → "16.7k", 1_240_000 → "1.2M".
+export function formatTokens(n) {
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}k`;
+  return String(n);
+}
+
+// Sum every token each assistant turn consumed — prompt, cache writes, cache
+// reads and completion — across all assistant messages in the session
+// transcript (a JSONL, one message per line). Deduped by message id so a
+// replayed line isn't counted twice. Cache reads dominate a long session, so
+// this is the true throughput; pass includeCacheRead=false for "fresh" tokens.
+export function sumTranscriptTokens(jsonlText, includeCacheRead = true) {
+  let total = 0;
+  const seen = new Set();
+  for (const line of jsonlText.split('\n')) {
+    if (!line) continue;
+    let o;
+    try {
+      o = JSON.parse(line);
+    } catch {
+      continue; // a partial last line while Claude Code is writing — skip it
+    }
+    const u = o?.message?.usage;
+    if (!u) continue;
+    const id = o.message?.id;
+    if (id) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+    }
+    total += (Number(u.input_tokens) || 0) +
+      (Number(u.output_tokens) || 0) +
+      (Number(u.cache_creation_input_tokens) || 0) +
+      (includeCacheRead ? (Number(u.cache_read_input_tokens) || 0) : 0);
+  }
+  return total;
+}
+
+// The "∑ N tok" total-tokens card: the cumulative tokens this window has
+// consumed. Reads the session transcript Claude Code points to on stdin
+// (transcript_path) and sums each turn's usage. Returns '' when the path is
+// absent (e.g. before the first turn) or unreadable. readFile is injectable so
+// the parsing can be unit-tested without touching disk.
+export function tokensSegment(stdinText, {
+  includeCacheRead = true,
+  readFile = (p) => fs.readFileSync(p, 'utf8'),
+} = {}) {
+  let p;
+  try {
+    p = JSON.parse(stdinText)?.transcript_path;
+  } catch {
+    return '';
+  }
+  if (!p) return '';
+  let text;
+  try {
+    text = readFile(p);
+  } catch {
+    return ''; // transcript not on disk yet, or not readable
+  }
+  const total = sumTranscriptTokens(text, includeCacheRead);
+  if (!total) return '';
+  return `${DIM}∑ ${formatTokens(total)} tok${RESET}`;
+}
+
+// The segments the line can show, keyed by the name used in --segments. Each
+// takes the stdin text and the parsed config and returns its rendered string.
+const SEGMENTS = {
+  context: (stdin) => contextSegment(stdin),
+  limits: (stdin) => render(cardsFromStdin(stdin)),
+  tokens: (stdin, cfg) => tokensSegment(stdin, {includeCacheRead: cfg.includeCacheRead}),
+};
+const DEFAULT_SEGMENTS = ['context', 'limits', 'tokens'];
+
+// Configure the line from the command's argv (install.sh bakes these into the
+// settings.json command): `--segments=a,b,c` picks which segments to show and
+// in what order; `--tokens=fresh` sums only new tokens (excludes cache reads).
+// Unknown segment names are dropped; an empty/missing list falls back to all.
+export function parseConfig(argv) {
+  const cfg = {segments: DEFAULT_SEGMENTS, includeCacheRead: true};
+  for (const arg of argv) {
+    const seg = /^--segments=(.*)$/.exec(arg);
+    if (seg) {
+      const list = seg[1].split(',').map((s) => s.trim()).filter((s) => SEGMENTS[s]);
+      if (list.length) cfg.segments = list;
+    } else if (arg === '--tokens=fresh') {
+      cfg.includeCacheRead = false;
+    } else if (arg === '--tokens=all') {
+      cfg.includeCacheRead = true;
+    }
+  }
+  return cfg;
+}
+
 function readStdin() {
   try {
     return fs.readFileSync(0, 'utf8'); // fd 0; Claude Code always pipes JSON here
@@ -295,49 +323,18 @@ function readStdin() {
   }
 }
 
-async function main() {
+function main() {
+  const cfg = parseConfig(process.argv.slice(2));
   const stdin = readStdin();
-  const ctx = contextSegment(stdin);
-  // Claude Code left-anchors the status line (indent is controlled by the
-  // settings `padding` field, not by us), so we just emit left-aligned content.
-  const emit = (body) => process.stdout.write([ctx, body].filter(Boolean).join('  '));
-
-  const cached = readCache();
-  let raw = cached?.fresh ? cached.raw : null;
-
-  // Only read the token when the cache is stale and we actually need to fetch.
-  // On macOS reading it spawns a synchronous `security` process, so we avoid
-  // doing that on every render when fresh cached data is already available.
-  let token = null;
-  if (!raw) {
-    token = readAccessToken();
-    if (token) {
-      const result = await fetchUsage(token);
-      if (result.raw) {
-        raw = result.raw;
-        writeCache(raw);
-      } else if (cached) {
-        // Fetch failed (e.g. HTTP 429): keep showing the last good data and back
-        // off, so we don't re-hit the endpoint — and re-trigger the limit — on
-        // every refresh.
-        raw = cached.raw;
-        touchCache();
-      }
-    }
-  }
-
-  if (raw) {
-    emit(render(normalizeUsage(raw)));
-    return;
-  }
-
-  // No usable API data (first run while offline, or signed out) — fall back to
-  // the Session/Week rate limits Claude Code passes on stdin. Fable is API-only.
-  const fromStdin = render(cardsFromStdin(stdin));
-  emit(fromStdin || `${DIM}usage: ${token ? 'unavailable' : 'sign in to Claude Code'}${RESET}`);
+  // Claude Code left-anchors the status line (indent via the settings `padding`
+  // field), so we just emit the chosen segments, in order, left-aligned. Context
+  // is always available; Session/Week appear once Claude Code provides
+  // rate_limits (Pro/Max, after the first API response of the session).
+  const parts = cfg.segments.map((key) => SEGMENTS[key](stdin, cfg)).filter(Boolean);
+  process.stdout.write(parts.join('  '));
 }
 
-// Only fetch/render when run directly; importing (e.g. from tests) is side-effect free.
+// Only render when run directly; importing (e.g. from tests) is side-effect free.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // A status line must never crash if the reader closes the pipe early.
   process.stdout.on('error', (e) => {

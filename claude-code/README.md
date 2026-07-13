@@ -5,18 +5,20 @@ Code prompt input** — the same numbers as the menu-bar / top-bar panel, withou
 leaving the terminal.
 
 ```text
-Context ▌░░░░░ 8%  Session █▌░░░░ 26% 59m  Week █▌░░░░ 24%  Fable █▊░░░░ 29% 1d18h
+Context ▌░░░░░ 8%  Session █▌░░░░ 26% 59m  Week █▌░░░░ 24% 4d2h  ∑ 1.2M tok
 ```
 
 Each limit gets a compact fixed-width gauge whose fill tracks the percentage
-down to 1/8 of a cell, colored by the API's own severity (green = normal,
+down to 1/8 of a cell, colored by a 70 % / 90 % threshold (green = normal,
 yellow = warning, red = critical). The line opens with a matching **Context**
-gauge — the context-window usage Claude Code reports for the session (colored by
-a local 70 % / 90 % threshold, since context has no API severity).
+gauge — the context-window usage Claude Code reports for the session. Every
+limit is shown, even at 0 %, and each one that reports a reset shows its own
+countdown.
 
-Each limit that reports a reset shows its countdown; when several limits share
-the same reset (the weekly limits and their per-model cards do), it's shown once,
-after the last of them — so `Week … Fable … 1d18h` rather than repeating it.
+It closes with **∑ N tok** — the total tokens this window has consumed since it
+opened (prompt, cache writes, cache reads and completions summed across every
+turn). Cache reads are re-read each turn, so on a long session this is a large,
+honest throughput figure — a good cue for when to `/clear`.
 
 It renders on its **own row above Claude Code's mode badges** (e.g.
 `⏵⏵ auto mode on…`) — those are drawn by Claude Code and are left untouched.
@@ -38,6 +40,20 @@ This copies the script to `~/.claude/claude-usage-statusline.mjs` and merges a
 untouched; re-running is safe). Open a new Claude Code session — or run
 `/statusline` — to see it.
 
+In a terminal it first runs a short guided setup with two interactive menus and
+a live preview of the line as you change things:
+
+- **Segments** — a checklist of `context`, `limits`, `tokens`. `↑`/`↓` move,
+  `space` toggles a segment on/off, `<`/`>` reorder it, `Enter` confirms.
+  Top-to-bottom is left-to-right on the status line.
+- **Token counter total** — a radio between `all` (include cache reads; the true
+  throughput) and `fresh` (exclude them; only new tokens), each shown with its
+  live figure. Only appears when `tokens` is enabled.
+
+Piped installs (and `--dry-run`) skip the menus and take the defaults: all three
+segments with the `all` token total. Your choices are baked into the command as
+`--segments` / `--tokens` flags, so re-running the installer changes them.
+
 To remove it, run `./install.sh --uninstall statusline` (deletes the script and
 its `statusLine` entry, leaving any other settings alone).
 
@@ -51,33 +67,36 @@ Node treats it as ESM regardless of any nearby `package.json`:
 {
   "statusLine": {
     "type": "command",
-    "command": "node \"/absolute/path/to/statusline.mjs\""
+    "command": "node \"/absolute/path/to/statusline.mjs\" --segments=context,limits,tokens --tokens=all"
   }
 }
 ```
 
+The `--segments` / `--tokens` flags are optional — omitting them shows every
+segment with the `all` token total. They're exactly what the guided installer
+writes for you.
+
 ## How it works
 
-Same read-only data layer as the rest of this project: it reads your existing
-Claude Code OAuth token — from `~/.claude/.credentials.json` on Linux, or the
-login **Keychain** on macOS — and queries the official
-`api.anthropic.com/api/oauth/usage` endpoint. It never writes your credentials
-and talks to no other host.
+Everything comes from what Claude Code gives the command locally — the session
+JSON piped on stdin, plus the local transcript file it points to — with **no
+credentials, no network, no cache, no other host**:
 
-The **Context** gauge comes from the session JSON Claude Code pipes to the
-command on stdin (`context_window.used_percentage`) — no extra work, no network.
+- **Context** from `context_window.used_percentage`.
+- **Session** (5-hour) and **Week** (7-day) from `rate_limits.five_hour` /
+  `rate_limits.seven_day`.
+- **∑ tokens** by reading the session transcript at `transcript_path` and
+  summing each turn's `usage` (input + output + cache creation + cache read).
 
-Claude Code refreshes the status line often, so successful responses are cached
-to a temp file for 120 seconds. The usage endpoint is rate-limited, so on a
-failed request (e.g. HTTP 429) the script keeps showing the last good data and
-backs off instead of re-hitting it every refresh.
+`rate_limits` is provided on Pro/Max plans and only appears **after the first
+API response of the session**, so on a fresh session you'll see just the
+**Context** gauge until your first message — Session and Week appear as soon as
+Claude Code provides them.
 
-If there's no usable API data at all (offline first run, or signed out), it
-falls back to the **Session** and **Week** rate limits Claude Code passes on
-stdin (`rate_limits.five_hour` / `seven_day`) — so you still see those two, just
-without the per-model (Fable) card, which is API-only.
+(The module also exports the shared `normalizeUsage` and on-disk cache helpers,
+retained for the cross-port parity and cache unit tests; the status line itself
+renders only from stdin.)
 
 ## Requirements
 
 - Node.js (already present — Claude Code runs on it)
-- An active Claude Code login

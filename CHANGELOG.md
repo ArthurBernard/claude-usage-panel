@@ -17,6 +17,20 @@ semantic versioning.
   `git pull --ff-only` first. macOS quits the running app and relaunches the new
   build so the upgrade actually takes effect; `--list` now shows detected vs
   installed targets.
+- Status line: a **Σ per-session token counter** (summed from the transcript
+  Claude Code points to, `all`/`fresh` cache-read modes), and a **guided
+  installer** — the `statusline` target now offers an interactive segment
+  checklist and token-total choice, plus `--segments` / `--tokens` flags baked
+  into the command. By @Giovannibthx (#8).
+
+### Changed
+
+- The Claude Code status line now **renders only from Claude Code's stdin**
+  (Context + Session/Week), fixing the cold-start "unavailable" message and
+  always showing every limit even at 0 %. Per-model (Fable) limits and API
+  severity are no longer displayed, since stdin doesn't expose them; the shared
+  `normalizeUsage` and cache helpers are kept for the cross-port parity and
+  cache tests. By @Giovannibthx (#8).
 
 ## [1.4.0] — 2026-07-13
 

@@ -7,6 +7,7 @@ import path from 'node:path';
 import {
     normalizeUsage, gauge, resetHint, render, contextSegment, cardsFromStdin,
     readCache, writeCache, touchCache, CACHE_TTL_MS,
+    formatTokens, sumTranscriptTokens, tokensSegment, parseConfig,
 } from '../claude-code/statusline.js';
 
 // Strip ANSI so we can assert on the visible glyphs. Built via RegExp
@@ -150,4 +151,54 @@ test('touchCache backs off by advancing mtime, keeping the payload', () => {
     } finally {
         fs.rmSync(p, {force: true});
     }
+});
+
+test('formatTokens is compact with k/M suffixes', () => {
+    assert.equal(formatTokens(847), '847');
+    assert.equal(formatTokens(16_700), '16.7k');
+    assert.equal(formatTokens(1_240_000), '1.2M');
+});
+
+test('sumTranscriptTokens sums usage across turns, cache reads optional', () => {
+    const line = (id, u) => JSON.stringify({type: 'assistant', message: {id, usage: u}});
+    const jsonl = [
+        line('a', {input_tokens: 100, output_tokens: 10,
+            cache_creation_input_tokens: 5, cache_read_input_tokens: 1000}),
+        line('a', {input_tokens: 100, output_tokens: 10}), // duplicate id → ignored
+        line('b', {input_tokens: 200, output_tokens: 20}),
+        JSON.stringify({type: 'user', message: {role: 'user'}}), // no usage → skipped
+        'not json', // partial line while Claude Code writes → skipped
+    ].join('\n');
+    assert.equal(sumTranscriptTokens(jsonl), 100 + 10 + 5 + 1000 + 200 + 20); // all
+    assert.equal(sumTranscriptTokens(jsonl, false), 100 + 10 + 5 + 200 + 20); // no cache read
+    assert.equal(sumTranscriptTokens(''), 0);
+});
+
+test('tokensSegment reads transcript_path and renders ∑ N tok, blank when empty', () => {
+    const stdin = JSON.stringify({transcript_path: '/tmp/session.jsonl'});
+    const jsonl = JSON.stringify({type: 'assistant',
+        message: {id: 'x', usage: {input_tokens: 16_000, output_tokens: 700}}});
+    assert.match(strip(tokensSegment(stdin, {readFile: () => jsonl})), /^∑ 16\.7k tok$/);
+    // No transcript_path, unreadable file, or zero tokens → blank.
+    assert.equal(tokensSegment('{}', {readFile: () => jsonl}), '');
+    assert.equal(tokensSegment(stdin, {readFile: () => { throw new Error('ENOENT'); }}), '');
+    assert.equal(tokensSegment(stdin, {readFile: () => ''}), '');
+});
+
+test('tokensSegment honors includeCacheRead: false (fresh tokens only)', () => {
+    const stdin = JSON.stringify({transcript_path: '/tmp/s.jsonl'});
+    const jsonl = JSON.stringify({type: 'assistant', message: {id: 'x',
+        usage: {input_tokens: 1000, output_tokens: 200, cache_read_input_tokens: 500_000}}});
+    assert.match(strip(tokensSegment(stdin, {readFile: () => jsonl})), /^∑ 501\.2k tok$/);
+    assert.match(strip(tokensSegment(stdin, {includeCacheRead: false, readFile: () => jsonl})),
+        /^∑ 1\.2k tok$/);
+});
+
+test('parseConfig picks segments/order and token mode, dropping unknowns', () => {
+    assert.deepEqual(parseConfig([]), {segments: ['context', 'limits', 'tokens'], includeCacheRead: true});
+    assert.deepEqual(parseConfig(['--segments=tokens,context']).segments, ['tokens', 'context']);
+    assert.deepEqual(parseConfig(['--segments=limits,bogus,tokens']).segments, ['limits', 'tokens']);
+    assert.deepEqual(parseConfig(['--segments=nope,']).segments, ['context', 'limits', 'tokens']);
+    assert.equal(parseConfig(['--tokens=fresh']).includeCacheRead, false);
+    assert.equal(parseConfig(['--tokens=all']).includeCacheRead, true);
 });

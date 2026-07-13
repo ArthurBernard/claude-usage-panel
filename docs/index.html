@@ -129,7 +129,7 @@
     <div class="feat"><div class="ic">📈</div><h3>Usage sparkline</h3><p>A tiny per-limit trend graph so you see where you're heading, not just where you are.</p></div>
     <div class="feat"><div class="ic">💲</div><h3>Session cost</h3><p>Optional dollar cost computed locally via <code>ccusage</code>.</p></div>
     <div class="feat"><div class="ic">🟣</div><h3>Cursor spend</h3><p>Optional team cycle spend, today, and top spender via the Cursor Admin API — with a % gauge when a limit is set.</p></div>
-    <div class="feat"><div class="ic">⌨️</div><h3>Terminal status line</h3><p>A condensed one-line view right under the Claude Code prompt — same numbers, zero-dependency Node, cache + backoff.</p></div>
+    <div class="feat"><div class="ic">⌨️</div><h3>Terminal status line</h3><p>A condensed one-line view right under the Claude Code prompt — Context, Session/Week limits, and a Σ session-token counter, read straight from Claude Code's stdin. No network, no credentials.</p></div>
   </div>
   <div class="why">
     <b>Why this one?</b> Most Claude usage indicators read the endpoint's legacy fields and show only the aggregate session + weekly pair. This one reads the modern <b>limits[]</b> array, so it shows <b>every</b> limit the Claude app shows — including <b>per-model weekly limits</b> the others miss — on <b>both Linux and macOS</b>, with native UI on each. No Electron.
@@ -159,7 +159,7 @@ gnome-extensions enable claude-usage-panel@fschmutz.github.io</pre>
   </div>
   <div class="pane" id="cli">
 <pre>./install.sh statusline    # merges a statusLine entry into ~/.claude/settings.json</pre>
-    <p class="lead" style="margin-top:14px">Renders under the Claude Code prompt: <code>Context ▌░░ 8%  Session █▌░ 26% 59m  Week █▌░ 24%  Fable █▊░ 29%</code>. Needs only Node (already present) and a Claude Code login.</p>
+    <p class="lead" style="margin-top:14px">Renders under the Claude Code prompt: <code>Context ▌░░ 8%  Session █▌░ 26% 59m  Week █▌░ 24%  ∑ 1.2M tok</code>. Needs only Node (already present) — it reads Claude Code's own stdin, so no token or login of its own.</p>
   </div>
   <p class="lead" style="margin-top:14px">Already installed? Upgrade with <code>./install.sh update --pull</code> — it detects what you have, pulls the latest, and reinstalls only those.</p>
   <div class="shots2">
