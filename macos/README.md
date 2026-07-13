@@ -33,11 +33,17 @@ cd macos
 swift run          # builds and launches; icon appears in the menu bar
 ```
 
-For a release build / a reusable `.app`:
+For a reusable `.app` bundle, run the unified installer from the repo root
+(its version is read from `package.json`):
 
 ```bash
-swift build -c release
-# binary at .build/release/ClaudeUsagePanel
+./install.sh macos          # produces macos/ClaudeUsagePanel.app
+```
+
+Or a bare release binary / Xcode:
+
+```bash
+swift build -c release      # binary at .build/release/ClaudeUsagePanel
 ```
 
 Or open the folder in Xcode (`File ▸ Open ▸ macos/`) and Run.

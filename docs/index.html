@@ -153,14 +153,12 @@ gnome-extensions enable claude-usage-panel@fschmutz.github.io</pre>
     <p class="lead" style="margin-top:14px">Or grab the <code>.shell-extension.zip</code> from the <a href="https://github.com/fschmutz/claude-usage-panel/releases/latest">latest release</a>.</p>
   </div>
   <div class="pane" id="macos">
-<pre>cd macos
-swift run          # icon appears in the menu bar
-# or ./build-app.sh for a ClaudeUsagePanel.app bundle</pre>
+<pre>cd macos && swift run          # icon appears in the menu bar
+# or ./install.sh macos (from the repo root) for a ClaudeUsagePanel.app bundle</pre>
     <p class="lead" style="margin-top:14px">macOS 13+. The token is read from the login Keychain — click <b>Always Allow</b> on first launch.</p>
   </div>
   <div class="pane" id="cli">
-<pre>cd claude-code
-./install.sh       # merges a statusLine entry into ~/.claude/settings.json</pre>
+<pre>./install.sh statusline    # merges a statusLine entry into ~/.claude/settings.json</pre>
     <p class="lead" style="margin-top:14px">Renders under the Claude Code prompt: <code>Context ▌░░ 8%  Session █▌░ 26% 59m  Week █▌░ 24%  Fable █▊░ 29%</code>. Needs only Node (already present) and a Claude Code login.</p>
   </div>
   <div class="shots2">

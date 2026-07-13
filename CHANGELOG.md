@@ -17,9 +17,27 @@ semantic versioning.
   `UserDefaults` on macOS).
 - GNOME: light-theme support for the dropdown.
 - Internationalization scaffolding (gettext `.pot` + a French translation).
+- **Cross-port parity test**: one shared `tests/fixtures/normalize.json` asserts
+  the GNOME, status-line, and macOS normalizers all agree on the semantic core —
+  drift between the three hand-written copies now reddens CI.
+- **macOS CI job** (`macos-latest`) compiles the real SwiftUI app, not just the
+  Foundation-only core, so app-layer type errors are caught in CI.
+- `scripts/bump-version.sh <ver>` bumps the version in every file at once
+  (`package.json`, `metadata.json`, the Homebrew cask, and `CHANGELOG.md`).
+- `install.sh --dry-run` prints every action without touching the filesystem,
+  `settings.json`, or dconf.
+- Unit tests for the status line's disk cache, TTL boundary, and rate-limit
+  backoff (`readCache` / `writeCache` / `touchCache` made injectable).
 
 ### Changed
 
+- **One unified `install.sh`** replaces the three separate scripts: it takes
+  `gnome` / `statusline` / `macos` targets (auto-detecting the OS with no
+  argument), adds `--uninstall`, `--list`, and `-h`, and each target guards its
+  own dependencies and skips cleanly instead of failing the run. Removed
+  `claude-code/install.sh` and `macos/build-app.sh`.
+- The macOS bundle version is now read from `package.json` (single source of
+  truth), fixing a drift where `build-app.sh` hardcoded a different version.
 - Refactored the pure logic into a testable `lib/pure.js` (GNOME) and a
   Foundation-only `ClaudeUsageCore` Swift library (macOS), separated from the
   GJS / SwiftUI / networking layers.

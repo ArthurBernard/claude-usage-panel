@@ -24,9 +24,10 @@ Session, weekly, and **per-model** limits (Fable, Opus…) — the same numbers 
 - [Why this one](#why-this-one)
 - [Features](#features)
 - [Screenshots](#screenshots)
-- [Install — GNOME (Linux)](#install--gnome-linux)
-- [Install — macOS](#install--macos)
-- [Install — Claude Code status line](#install--claude-code-status-line)
+- [Install](#install)
+  - [GNOME (Linux)](#gnome-linux)
+  - [macOS](#macos)
+  - [Claude Code status line](#claude-code-status-line)
 - [Settings](#settings)
 - [How it works](#how-it-works)
 - [Cursor (optional)](#cursor-optional)
@@ -64,17 +65,37 @@ including **per-model weekly limits** (Fable, Opus…) that the others miss — 
 |---|---|
 | <img src="docs/screenshot.png" alt="Dropdown" width="360"> | <img src="docs/settings.png" alt="Settings" width="360"> |
 
-## Install — GNOME (Linux)
+## Install
 
-From source:
+One script installs, and uninstalls, every client:
 
 ```bash
 git clone https://github.com/fschmutz/claude-usage-panel.git
 cd claude-usage-panel
-./install.sh
+./install.sh                 # auto-detect this OS and install the sensible set
 ```
 
-`install.sh` copies the extension, compiles its schema, clears the global
+With no argument it detects your platform and installs what fits (on GNOME: the
+extension **and** the status line). Name one or more targets to be explicit, or
+reverse any install:
+
+| Command | Does |
+|---|---|
+| `./install.sh` | auto-detect OS → the sensible set |
+| `./install.sh gnome` | GNOME Shell extension |
+| `./install.sh statusline` | Claude Code status line |
+| `./install.sh macos` | build the macOS `.app` |
+| `./install.sh gnome statusline` | any combination |
+| `./install.sh --uninstall [target…]` | reverse an install |
+| `./install.sh --list` · `-h` | show detected targets · full help |
+
+Each target guards its own dependencies and is skipped with a clear message
+(rather than failing the whole run) if they're missing. Re-running is safe.
+Per-platform notes follow.
+
+### GNOME (Linux)
+
+The `gnome` target copies the extension, compiles its schema, clears the global
 `disable-user-extensions` switch if set, and enables it to auto-start on every
 login. Then **log out and back in** (Wayland loads new extensions only at login)
 and confirm:
@@ -92,16 +113,16 @@ gnome-extensions install --force claude-usage-panel@fschmutz.github.io.shell-ext
 
 > An extensions.gnome.org listing is planned — see [PUBLISHING.md](PUBLISHING.md).
 
-## Install — macOS
+### macOS
 
 ```bash
-cd macos
-swift run          # icon appears in the menu bar
+cd macos && swift run    # icon appears in the menu bar
 ```
 
-`macos/build-app.sh` produces a distributable `ClaudeUsagePanel.app` (menu-bar
-agent, no Dock icon). Full details, release build, notarization, and a Homebrew
-cask template are in [macos/README.md](macos/README.md) and [PUBLISHING.md](PUBLISHING.md).
+`./install.sh macos` produces a distributable `ClaudeUsagePanel.app` (menu-bar
+agent, no Dock icon; its version is read from `package.json`). Full details,
+release build, notarization, and a Homebrew cask template are in
+[macos/README.md](macos/README.md) and [PUBLISHING.md](PUBLISHING.md).
 
 ### Requirements
 
@@ -110,7 +131,7 @@ cask template are in [macos/README.md](macos/README.md) and [PUBLISHING.md](PUBL
 - An active Claude Code login (see [How it works](#how-it-works) for where the token lives)
 - Optional, for cost: Node.js / `npx`, or a global `ccusage`
 
-## Install — Claude Code status line
+### Claude Code status line
 
 Prefer it in the terminal? A tiny status line renders your usage **right under
 the Claude Code prompt input** — the same numbers, without leaving your session:
@@ -127,14 +148,13 @@ it leaves untouched); Claude Code left-anchors the row, so indent it with the
 settings `padding` field if you like. Install it with:
 
 ```bash
-cd claude-code
-./install.sh
+./install.sh statusline
 ```
 
-`claude-code/install.sh` copies the script into `~/.claude`, then merges a
-`statusLine` entry into `~/.claude/settings.json` — other settings are left
-untouched and re-running is safe. Open a new session or run `/statusline` to see
-it. Manual setup and details are in [claude-code/README.md](claude-code/README.md).
+That copies the script into `~/.claude`, then merges a `statusLine` entry into
+`~/.claude/settings.json` — other settings are left untouched and re-running is
+safe. Open a new session or run `/statusline` to see it. Manual setup and details
+are in [claude-code/README.md](claude-code/README.md).
 
 Needs only Node.js (already present — Claude Code runs on it) and an active
 Claude Code login.
@@ -212,9 +232,9 @@ markdownlint (docs), gitleaks (secret scan), plus JSON/XML/whitespace checks.
 │   └── lib/                 # claudeUsage.js · cost.js · cursorUsage.js
 ├── macos/                   # native SwiftUI MenuBarExtra app (SwiftPM)
 │   └── Sources/ClaudeUsagePanel/
-└── claude-code/             # Node status line for the Claude Code prompt
-    ├── statusline.js        # fetch + render one condensed line
-    └── install.sh           # merge statusLine into ~/.claude/settings.json
+├── claude-code/             # Node status line for the Claude Code prompt
+│   └── statusline.js        # fetch + render one condensed line
+└── install.sh               # unified installer (gnome · statusline · macos)
 ```
 
 ## Roadmap

@@ -27,8 +27,10 @@ left-aligned. Add `"padding": N` to the `statusLine` block in
 
 ## Install
 
+From the repo root, use the unified installer:
+
 ```sh
-./install.sh
+./install.sh statusline
 ```
 
 This copies the script to `~/.claude/claude-usage-statusline.mjs` and merges a
@@ -36,7 +38,8 @@ This copies the script to `~/.claude/claude-usage-statusline.mjs` and merges a
 untouched; re-running is safe). Open a new Claude Code session — or run
 `/statusline` — to see it.
 
-To remove it, delete the `statusLine` key from `~/.claude/settings.json`.
+To remove it, run `./install.sh --uninstall statusline` (deletes the script and
+its `statusLine` entry, leaving any other settings alone).
 
 ### Manual install
 

@@ -1,0 +1,108 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+Three native clients that surface Claude Code plan-usage limits from the official
+Anthropic usage endpoint: a **GNOME Shell extension**, a **macOS SwiftUI menu-bar
+app**, and a **Node status line** for under the Claude Code prompt. All three read
+a locally-stored OAuth token read-only and render the same `limits[]` data. An
+optional Cursor team-spend section is available in the two desktop clients.
+
+## Commands
+
+```bash
+# JS unit tests (GNOME lib + status line) — the primary test gate
+npm test                          # node --test tests/*.test.js
+node --test tests/pure.test.js    # single file
+node --test --test-name-pattern="sparkline" tests/pure.test.js  # single test
+
+# Swift core unit tests (runs on Linux CI too — no macOS needed)
+cd macos && swift test
+
+# Lint / format everything (same set runs in CI on every push)
+pre-commit run --all-files
+pre-commit run eslint --all-files   # single hook
+
+# Install — one unified entrypoint for all three clients
+./install.sh                 # auto-detect OS → install the sensible set
+./install.sh gnome           # GNOME extension only → then log out/in (Wayland)
+./install.sh statusline      # status line → merges into ~/.claude/settings.json
+./install.sh macos           # build macos/ClaudeUsagePanel.app
+./install.sh --uninstall [target...]   # reverse it   |   --list   |   -h
+./install.sh --dry-run [target...]     # print actions without touching anything
+
+# Release: bump the version everywhere from one source of truth
+./scripts/bump-version.sh 1.4.0
+```
+
+There is **no build step for the GNOME extension or the status line** — they run
+the source files directly. `npm` is only a test runner; there are no runtime deps.
+
+## Architecture — one contract, three ports
+
+The load-bearing idea: **all business logic is pure and duplicated across
+languages, kept behaviorally identical by a shared test contract.** When you
+change normalization, severity, sparkline, reset-formatting, or Cursor
+summarization, you must change it in **every** port and keep them matching.
+
+- **`claude-usage-panel@fschmutz.github.io/lib/pure.js`** — GNOME pure logic. No
+  `gi`/GJS imports so it runs under plain `node` for tests. This is the reference
+  implementation.
+- **`macos/Sources/ClaudeUsageCore/Model.swift`** (+ `CursorModel.swift`) —
+  Foundation-only mirror of `pure.js`. No networking/SwiftUI, so it unit-tests on
+  Linux CI. Comment in the file explicitly says "Mirrors the GNOME extension's
+  lib/pure.js" — keep it that way.
+- **`claude-code/statusline.js`** — standalone, zero-dependency Node; re-derives
+  the same normalization for the terminal one-liner.
+
+**Parity is CI-enforced.** `tests/fixtures/normalize.json` is one shared set of
+raw payloads + expected core output; `tests/parity.test.js` runs it through both
+JS ports and the Swift `NormalizeParityTests` runs it through `UsageNormalizer`.
+Change any normalizer and update the fixture — a drifting port goes red. Labels
+are intentionally per-port (compact in the terminal) and are *not* asserted.
+
+The normalization contract (must stay identical across ports):
+
+- Prefer the modern `limits[]` array; fall back to legacy `five_hour`/`seven_day`
+  utilization fields only when `limits[]` is absent/empty.
+- `KIND_ORDER` / `kindOrder` defines card sort order; per-model limits get a
+  `label · <model display_name>` suffix and a `kind:model` composite key.
+- `clampPercent` → 0..100 int; `severity` comes straight from the API
+  (normal/warning/critical) and also drives the top-bar glyph color.
+- `alertThreshold` buckets to 0/90/100 for limit-crossing notifications.
+
+### Platform layer (thin, wraps the pure core)
+
+- GNOME: `extension.js` (panel button, dropdown, alerts, sparkline), `prefs.js`
+  (libadwaita), `lib/claudeUsage.js` + `lib/cursorUsage.js` + `lib/cost.js` do
+  the I/O (Soup HTTP, subprocess), settings via GSettings schema in `schemas/`.
+- macOS: `Sources/ClaudeUsagePanel/` (App, Usage, Cursor, Cost) is the
+  networking + `MenuBarExtra` UI over `ClaudeUsageCore`.
+
+### Data source (identical for all clients)
+
+```text
+GET https://api.anthropic.com/api/oauth/usage
+    authorization: Bearer <token>
+    anthropic-beta: oauth-2025-04-20
+```
+
+Token location: `~/.claude/.credentials.json` on Linux; the **login Keychain** on
+macOS (read via `security find-generic-password`). Clients **never write the
+token** — on expiry they tell the user to run any Claude Code command to refresh.
+Cost (optional) shells out to `ccusage`; Cursor (optional) calls `api.cursor.com`
+with the user's Admin API key.
+
+## Conventions
+
+- ESLint runs with `--max-warnings=0`; Swift with `swift format lint --strict`.
+  Shell is shellcheck + shfmt (`-i 4 -ci`). All gated by pre-commit **and** CI.
+- Bump `version` in `package.json`, `version-name` in `metadata.json`, and update
+  `CHANGELOG.md` together when releasing (see `PUBLISHING.md`). `package.json` is
+  the single source of truth for the macOS bundle version — `install.sh macos`
+  reads it into the `Info.plist`; do not hardcode a version anywhere else.
+- Any logic change needs its matching unit test in `tests/*.test.js` and/or
+  `macos/Tests/ClaudeUsageCoreTests/` — the ports are only kept in sync because
+  the tests assert the same behavior.

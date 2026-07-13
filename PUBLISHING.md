@@ -1,5 +1,19 @@
 # Publishing / distribution
 
+## Cutting a release
+
+Bump the version everywhere it appears from one command, then commit:
+
+```bash
+scripts/bump-version.sh 1.4.0
+```
+
+It writes `package.json` (`version`), `metadata.json` (`version-name`), the
+Homebrew cask example below, and opens a dated `CHANGELOG.md` section above a
+fresh `[Unreleased]`. `package.json` is the single source of truth the macOS
+bundle reads — never hardcode a version anywhere. Review the diff, commit, tag,
+then build/attach artifacts per the sections below.
+
 ## GNOME — extensions.gnome.org (EGO)
 
 A packaged zip is attached to each GitHub release
@@ -27,10 +41,12 @@ optional Cursor section calls `api.cursor.com` only when enabled with a key.
 ## macOS — .app bundle
 
 ```bash
-cd macos
-./build-app.sh          # produces ClaudeUsagePanel.app
-open ClaudeUsagePanel.app
+./install.sh macos              # produces macos/ClaudeUsagePanel.app
+open macos/ClaudeUsagePanel.app
 ```
+
+The bundle version is read from `package.json`, so bump it there (see the
+release checklist) before building.
 
 The bundle is a menu-bar agent (`LSUIElement`), no Dock icon.
 
@@ -67,7 +83,7 @@ fill in the release URL + sha256:
 
 ```ruby
 cask "claude-usage-panel" do
-  version "1.2.0"
+  version "1.3.0"
   sha256 "REPLACE_WITH_SHA256"
 
   url "https://github.com/fschmutz/claude-usage-panel/releases/download/v#{version}/ClaudeUsagePanel.zip"
