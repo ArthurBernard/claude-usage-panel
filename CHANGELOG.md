@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-07-13
+
 ### Added
 
 - Claude Code **terminal status line** (`claude-code/`): a condensed one-line
