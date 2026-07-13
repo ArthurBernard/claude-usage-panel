@@ -1,0 +1,54 @@
+{
+  "_comment": "Shared normalization contract. Loaded by tests/parity.test.js (pure.js + statusline.js) AND macos/Tests/ClaudeUsageCoreTests (Swift). Each case: `input` is a raw usage payload; `expected` is the presentation-agnostic core every port must produce — same kinds, in KIND_ORDER, with identical percent (clamped/rounded), severity, resets_at, and active. Labels are intentionally per-port and NOT asserted here.",
+  "cases": [
+    {
+      "name": "modern limits[] — sorts to KIND_ORDER, clamps, defaults severity/active",
+      "input": {
+        "limits": [
+          {
+            "kind": "weekly_scoped", "percent": 100, "severity": "critical",
+            "resets_at": "2026-07-07T06:00:00Z", "is_active": true,
+            "scope": {"model": {"display_name": "Fable"}}
+          },
+          {"kind": "session", "percent": 42.6, "severity": "warning", "is_active": true},
+          {"kind": "weekly_all", "percent": 72},
+          {"kind": "weekly_oauth_apps", "percent": 150, "severity": "normal", "is_active": false}
+        ]
+      },
+      "expected": [
+        {"kind": "session", "percent": 43, "severity": "warning", "resetsAt": null, "active": true},
+        {"kind": "weekly_all", "percent": 72, "severity": "normal", "resetsAt": null, "active": false},
+        {"kind": "weekly_scoped", "percent": 100, "severity": "critical", "resetsAt": "2026-07-07T06:00:00Z", "active": true},
+        {"kind": "weekly_oauth_apps", "percent": 100, "severity": "normal", "resetsAt": null, "active": false}
+      ]
+    },
+    {
+      "name": "legacy five_hour / seven_day fallback",
+      "input": {
+        "five_hour": {"utilization": 10, "resets_at": "2026-07-01T03:00:00Z"},
+        "seven_day": {"utilization": 55}
+      },
+      "expected": [
+        {"kind": "session", "percent": 10, "severity": "normal", "resetsAt": "2026-07-01T03:00:00Z", "active": true},
+        {"kind": "weekly_all", "percent": 55, "severity": "normal", "resetsAt": null, "active": false}
+      ]
+    },
+    {
+      "name": "negative percent clamps to 0",
+      "input": {"limits": [{"kind": "session", "percent": -5, "severity": "normal", "is_active": true}]},
+      "expected": [
+        {"kind": "session", "percent": 0, "severity": "normal", "resetsAt": null, "active": true}
+      ]
+    },
+    {
+      "name": "empty payload → no cards",
+      "input": {},
+      "expected": []
+    },
+    {
+      "name": "empty limits[] → no cards",
+      "input": {"limits": []},
+      "expected": []
+    }
+  ]
+}

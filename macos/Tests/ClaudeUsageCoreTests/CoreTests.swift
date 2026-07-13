@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 
 @testable import ClaudeUsageCore
@@ -44,6 +45,43 @@ final class UsageNormalizerTests: XCTestCase {
             "limits": [["kind": "session", "percent": 142.6]]
         ])
         XCTAssertEqual(cards.first?.percent, 100)
+    }
+}
+
+/// Cross-port parity: assert the Swift normalizer against the very same fixture
+/// file the JS ports use (tests/parity.test.js). One shared contract, three
+/// implementations — if any drifts on the semantic core, a port's suite reddens.
+final class NormalizeParityTests: XCTestCase {
+    func testMatchesSharedFixtures() throws {
+        // #filePath → …/macos/Tests/ClaudeUsageCoreTests/CoreTests.swift; climb to repo root.
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()  // ClaudeUsageCoreTests
+            .deletingLastPathComponent()  // Tests
+            .deletingLastPathComponent()  // macos
+            .deletingLastPathComponent()  // repo root
+        let url = root.appendingPathComponent("tests/fixtures/normalize.json")
+        let obj = try JSONSerialization.jsonObject(with: Data(contentsOf: url))
+        let cases = (obj as! [String: Any])["cases"] as! [[String: Any]]
+
+        for c in cases {
+            let name = c["name"] as? String ?? "?"
+            let input = c["input"] as! [String: Any]
+            let expected = c["expected"] as! [[String: Any]]
+            let cards = UsageNormalizer.normalize(input)
+            XCTAssertEqual(cards.count, expected.count, "count — \(name)")
+            for (i, e) in expected.enumerated() where i < cards.count {
+                let card = cards[i]
+                XCTAssertEqual(
+                    card.id.components(separatedBy: ":")[0], e["kind"] as? String, "kind — \(name)")
+                XCTAssertEqual(card.percent, e["percent"] as? Int, "percent — \(name)")
+                XCTAssertEqual(
+                    card.severity.rawValue, e["severity"] as? String, "severity — \(name)")
+                XCTAssertEqual(card.active, e["active"] as? Bool, "active — \(name)")
+                XCTAssertEqual(
+                    card.resetsAt, UsageNormalizer.parseDate(e["resetsAt"] as? String),
+                    "resetsAt — \(name)")
+            }
+        }
     }
 }
 
