@@ -50,9 +50,12 @@ Or open the folder in Xcode (`File ▸ Open ▸ macos/`) and Run.
 
 ### Start at login
 
-System Settings ▸ General ▸ Login Items ▸ **+** and add the built app (or the
-`.build/release/ClaudeUsagePanel` binary). The app is an "accessory" (no Dock
-icon), so it lives only in the menu bar.
+`./install.sh macos` sets this up for you: on first launch the app registers
+itself as a login item via `SMAppService` (macOS 13+). Toggle it any time under
+**Settings ▸ Start at login**, or remove it in System Settings ▸ General ▸
+Login Items. The app is an "accessory" (no Dock icon), so it lives only in the
+menu bar. (If you ran a bare `swift run` / binary instead, add it manually via
+Login Items ▸ **+**.)
 
 ## Layout
 

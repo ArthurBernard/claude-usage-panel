@@ -116,12 +116,23 @@ gnome-extensions install --force claude-usage-panel@fschmutz.github.io.shell-ext
 ### macOS
 
 ```bash
-cd macos && swift run    # icon appears in the menu bar
+./install.sh macos       # build, install to /Applications, and launch it
 ```
 
-`./install.sh macos` produces a distributable `ClaudeUsagePanel.app` (menu-bar
-agent, no Dock icon; its version is read from `package.json`). Full details,
-release build, notarization, and a Homebrew cask template are in
+That builds `ClaudeUsagePanel.app` (menu-bar agent, no Dock icon; version from
+`package.json`), ad-hoc signs it, copies it to `/Applications`, and opens it. On
+first run it **registers itself to start at login** (like the GNOME extension
+auto-enables) — toggle it any time in **Settings ▸ Start at login**, or in
+System Settings ▸ General ▸ Login Items. `./install.sh --uninstall macos`
+removes it.
+
+Just want to run it without installing?
+
+```bash
+cd macos && swift run    # icon appears in the menu bar, no install
+```
+
+Release build, notarization, and a Homebrew cask template are in
 [macos/README.md](macos/README.md) and [PUBLISHING.md](PUBLISHING.md).
 
 ### Requirements

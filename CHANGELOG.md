@@ -28,6 +28,10 @@ semantic versioning.
   `settings.json`, or dconf.
 - Unit tests for the status line's disk cache, TTL boundary, and rate-limit
   backoff (`readCache` / `writeCache` / `touchCache` made injectable).
+- macOS: **Start at login** via `SMAppService` (macOS 13+), on by default on
+  first launch (matching the GNOME auto-enable) and toggleable in Settings.
+  `install.sh macos` now ad-hoc signs the bundle, installs it to `/Applications`,
+  and launches it; `--uninstall macos` removes it.
 
 ### Changed
 
