@@ -1,0 +1,76 @@
+name: release
+
+# Cut a GitHub Release automatically when a version tag is pushed. The flow is:
+#   scripts/bump-version.sh X.Y.Z  →  commit  →  git tag vX.Y.Z && push --tags
+# and this workflow does the rest: build the GNOME extension zip, pull the notes
+# for that version out of CHANGELOG.md, and publish the Release with the zip
+# attached. Re-runnable for an existing tag via "Run workflow".
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)release, e.g. v1.4.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Resolve tag
+        id: t
+        run: echo "tag=${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}" >> "$GITHUB_OUTPUT"
+
+      # Build the installable GNOME zip: metadata.json at the root, the compiled
+      # GSettings schema, and compiled translations — same layout install.sh makes.
+      - name: Build GNOME extension zip
+        id: pack
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libglib2.0-bin gettext zip
+          uuid="claude-usage-panel@fschmutz.github.io"
+          (
+            cd "$uuid"
+            glib-compile-schemas schemas/
+            for po in po/*.po; do
+              [ -e "$po" ] || continue
+              lang="$(basename "$po" .po)"
+              mkdir -p "locale/$lang/LC_MESSAGES"
+              msgfmt "$po" -o "locale/$lang/LC_MESSAGES/claude-usage-panel.mo"
+            done
+            zip -rq "../$uuid.shell-extension.zip" . -x 'po/*'
+          )
+          echo "zip=$uuid.shell-extension.zip" >> "$GITHUB_OUTPUT"
+
+      # Pull just this version's section out of CHANGELOG.md for the release body.
+      - name: Extract release notes
+        run: |
+          ver="${TAG#v}"
+          awk -v v="$ver" '
+            $0 ~ "^## \\[" v "\\]" { p = 1; next }
+            p && /^## \[/ { exit }
+            p { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then echo "Release $TAG" > notes.md; fi
+          echo "----- notes -----"; cat notes.md
+        env:
+          TAG: ${{ steps.t.outputs.tag }}
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.t.outputs.tag }}
+          ZIP: ${{ steps.pack.outputs.zip }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file notes.md
+            gh release upload "$TAG" "$ZIP" --clobber
+          else
+            gh release create "$TAG" --title "$TAG" --notes-file notes.md "$ZIP"
+          fi
