@@ -8,6 +8,10 @@ semantic versioning.
 
 ### Added
 
+- **Automated GitHub Releases**: pushing a `v*` tag now runs
+  `.github/workflows/release.yml`, which builds the GNOME `.shell-extension.zip`,
+  pulls the version's notes from `CHANGELOG.md`, and publishes the Release with
+  the zip attached (re-runnable from the Actions tab for an existing tag).
 - `install.sh update [target…]` upgrades an existing install in place —
   reinstalling only the targets already present (detected), with `--pull` to
   `git pull --ff-only` first. macOS quits the running app and relaunches the new

@@ -2,17 +2,25 @@
 
 ## Cutting a release
 
-Bump the version everywhere it appears from one command, then commit:
+Bump the version everywhere from one command, commit, then tag:
 
 ```bash
 scripts/bump-version.sh 1.4.0
+git add -A && git commit -m "chore(release): v1.4.0"
+git tag v1.4.0 && git push-confirm && git push-confirm --tags
 ```
 
-It writes `package.json` (`version`), `metadata.json` (`version-name`), the
-Homebrew cask example below, and opens a dated `CHANGELOG.md` section above a
-fresh `[Unreleased]`. `package.json` is the single source of truth the macOS
-bundle reads — never hardcode a version anywhere. Review the diff, commit, tag,
-then build/attach artifacts per the sections below.
+`bump-version.sh` writes `package.json` (`version`), `metadata.json`
+(`version-name`), the Homebrew cask example below, and opens a dated
+`CHANGELOG.md` section above a fresh `[Unreleased]`. `package.json` is the single
+source of truth the macOS bundle reads — never hardcode a version anywhere.
+
+**Pushing the `v*` tag triggers `.github/workflows/release.yml`**, which builds
+the GNOME `.shell-extension.zip`, extracts that version's `CHANGELOG.md` section
+as the release notes, and creates the GitHub Release with the zip attached. No
+manual `gh release create` needed. To (re)release an existing tag, run the
+**release** workflow from the Actions tab with the tag as input. The macOS `.app`
+is not auto-attached yet (needs Developer ID signing / notarization — see below).
 
 ## GNOME — extensions.gnome.org (EGO)
 

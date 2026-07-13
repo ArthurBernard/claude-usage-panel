@@ -43,5 +43,7 @@ V="$V" DATE="$DATE" perl -pi -e '
 echo "  CHANGELOG.md → ## [$V] — $DATE (with a fresh [Unreleased])"
 
 echo
-echo "Bumped to $V. Review the diff, then commit:"
+echo "Bumped to $V. Review the diff, then commit + tag (the tag push triggers"
+echo "the release workflow, which builds the zip and creates the GitHub Release):"
 echo "  git -C \"$ROOT\" add -A && git -C \"$ROOT\" commit -m \"chore(release): v$V\""
+echo "  git -C \"$ROOT\" tag v$V && git -C \"$ROOT\" push-confirm && git -C \"$ROOT\" push-confirm --tags"
