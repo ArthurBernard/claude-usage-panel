@@ -7,9 +7,11 @@
 #   ./install.sh statusline         Claude Code status line only
 #   ./install.sh macos              build the macOS .app bundle
 #   ./install.sh gnome statusline   any combination
+#   ./install.sh update [target...]        reinstall what's already installed (upgrade)
+#   ./install.sh update --pull             git pull --ff-only first, then upgrade
 #   ./install.sh --uninstall [target...]   reverse an install (default: all detected)
 #   ./install.sh --dry-run [target...]     print the actions without doing them (alias -n)
-#   ./install.sh --list             show what each target would do / detects
+#   ./install.sh --list             show detected + installed targets
 #   ./install.sh -h | --help
 #
 # Each target guards its own dependencies and is skipped with a clear message
@@ -32,6 +34,7 @@ ok() { printf '  \033[32mok\033[0m   %s\n' "$*"; }
 # (command -v, gsettings get, uname) always run. `act` wraps a plain command;
 # heredoc merges (node/python) are guarded inline with `$DRY`.
 DRY=false
+PULL=false
 act() {
     if $DRY; then printf '  would: %s\n' "$*"; else "$@"; fi
 }
@@ -198,7 +201,7 @@ install_macos() {
     ver="$(version)"
     if $DRY; then
         echo "  would: swift build -c release + assemble $bundle (v$ver)"
-        echo "  would: ad-hoc codesign, cp -R to /Applications/$app.app, open it"
+        echo "  would: quit a running instance, ad-hoc codesign, cp -R to /Applications/$app.app, open it"
         ok "dry-run: no build performed"
         return 0
     fi
@@ -236,6 +239,9 @@ PLIST
 
     # Make it perpetual: install into /Applications and launch it. On first run
     # the app registers itself as a login item (toggle in Settings ▸ Start at login).
+    # Quit any running instance first so we replace (not copy over) a busy bundle
+    # and so `open` relaunches the NEW binary — this is what makes upgrades take.
+    osascript -e 'quit app "Claude Usage Panel"' >/dev/null 2>&1 || true
     local installed="/Applications/$app.app"
     if rm -rf "$installed" 2>/dev/null && cp -R "$bundle" "$installed" 2>/dev/null; then
         open "$installed" 2>/dev/null || true
@@ -272,6 +278,15 @@ detect_targets() {
     command -v node >/dev/null && echo statusline
 }
 
+# Print the targets currently installed on this machine, one per line. Drives
+# `update` (reinstall only what's actually there) and `--list`.
+installed_targets() {
+    [ -d "$HOME/.local/share/gnome-shell/extensions/$UUID" ] && echo gnome
+    [ -f "$HOME/.claude/claude-usage-statusline.mjs" ] && echo statusline
+    [ -d "/Applications/ClaudeUsagePanel.app" ] && echo macos
+    return 0
+}
+
 is_target() {
     local t
     for t in $ALL_TARGETS; do [ "$t" = "$1" ] && return 0; done
@@ -292,7 +307,9 @@ for arg in "$@"; do
             usage
             exit 0
             ;;
+        update) action=update ;;
         --uninstall) action=uninstall ;;
+        --pull) PULL=true ;;
         --dry-run | -n) DRY=true ;;
         --list) action=list ;;
         -*)
@@ -311,26 +328,52 @@ for arg in "$@"; do
     esac
 done
 
-if [ ${#targets[@]} -eq 0 ]; then
-    mapfile -t targets < <(detect_targets)
-fi
-
 if [ "$action" = list ]; then
-    info "Detected on this machine ($(uname -s)):"
-    printf '  %s\n' "${targets[@]:-<none>}"
-    echo "All targets: $ALL_TARGETS   Version: $(version)"
+    detected="$(detect_targets | paste -sd' ' -)"
+    installed="$(installed_targets | paste -sd' ' -)"
+    info "Claude Usage Panel — targets (version $(version))"
+    echo "  all:        $ALL_TARGETS"
+    echo "  detected:   ${detected:-<none>}   (bare ./install.sh installs these)"
+    echo "  installed:  ${installed:-<none>}   (./install.sh update reinstalls these)"
     exit 0
 fi
 
+# --pull: refresh the checkout before (re)installing, so `update` is one command.
+if $PULL; then
+    if $DRY; then
+        echo "would: git -C \"$ROOT\" pull --ff-only"
+        echo
+    else
+        info "Pulling latest…"
+        git -C "$ROOT" pull --ff-only
+        echo
+    fi
+fi
+
+# Default target set: `update` reinstalls what's already installed; install and
+# uninstall fall back to what fits this OS.
 if [ ${#targets[@]} -eq 0 ]; then
-    echo "No installable target detected. Name one explicitly: $ALL_TARGETS" >&2
+    if [ "$action" = update ]; then
+        mapfile -t targets < <(installed_targets)
+    else
+        mapfile -t targets < <(detect_targets)
+    fi
+fi
+
+if [ ${#targets[@]} -eq 0 ]; then
+    if [ "$action" = update ]; then
+        echo "Nothing installed to update. Install first: ./install.sh [target...]" >&2
+    else
+        echo "No installable target detected. Name one explicitly: $ALL_TARGETS" >&2
+    fi
     exit 1
 fi
 
 info "==> ${action}: ${targets[*]}$($DRY && echo '  (dry-run)')"
 echo
 for t in "${targets[@]}"; do
-    "${action}_${t}"
+    # `update` is a reinstall in place (install_macos also quits + relaunches).
+    if [ "$action" = update ]; then install_"$t"; else "${action}_${t}"; fi
     echo
 done
 info "Done. Requires an active Claude Code login (~/.claude/.credentials.json)."
