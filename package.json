@@ -4,6 +4,12 @@
   "description": "GNOME + macOS panel for Claude Code plan usage",
   "private": true,
   "type": "module",
+  "bin": {
+    "claude-usage-panel": "mcp/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "test": "node --test tests/*.test.js"
   },

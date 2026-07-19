@@ -4,8 +4,9 @@
 
 export default [
     {
-        // Node.js status-line helper for Claude Code (ESM, Node globals — not GJS).
-        files: ['claude-code/**/*.js'],
+        // Node.js code (ESM, Node globals — not GJS): the Claude Code status
+        // line, the MCP server, and the test suite (which runs under node).
+        files: ['claude-code/**/*.js', 'mcp/**/*.js', 'tests/**/*.js'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'module',
@@ -14,6 +15,7 @@ export default [
                 console: 'readonly',
                 fetch: 'readonly',
                 AbortController: 'readonly',
+                AbortSignal: 'readonly',
                 setTimeout: 'readonly',
                 clearTimeout: 'readonly',
             },
@@ -29,7 +31,7 @@ export default [
     },
     {
         files: ['**/*.js'],
-        ignores: ['eslint.config.js', 'claude-code/**/*.js'],
+        ignores: ['eslint.config.js', 'claude-code/**/*.js', 'mcp/**/*.js'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'module',
