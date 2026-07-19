@@ -43,6 +43,12 @@ Name targets to be explicit (`bash -s -- <target…>` through the one-liner, or
 | `statusline` | One-line usage gauge under the Claude Code prompt | [claude-code/README.md](claude-code/README.md) |
 | `mcp` | `get_usage` tool inside Claude Code **and** Cursor — ask "how much of my plan have I used?" | [mcp/README.md](mcp/README.md) |
 
+The status line renders like this, right under the prompt input:
+
+```text
+Context ▌░░░░░ 8%  Session █▌░░░░ 26% 59m  Week █▌░░░░ 24% 4d2h  ∑ 1.2M tok
+```
+
 Everything is reversible and idempotent: `update --pull` upgrades what you
 have, `--uninstall [target…]` reverses it, `--dry-run` previews, `--list`
 shows what's detected and installed.
@@ -67,6 +73,12 @@ plus terminal and in-conversation projections.
 | 🔔 **Alerts + sparklines** | Desktop notification at 90% / 100%, tiny trend graph per limit |
 | 💲 **Optional extras** | Local [`ccusage`](https://github.com/ryoppippi/ccusage) session cost · Cursor team spend via Admin API |
 | 🔒 **Read-only & private** | Uses your existing local token, never writes it, no telemetry, talks only to official APIs |
+
+## Screenshots
+
+| Dropdown | Settings |
+|---|---|
+| <img src="docs/screenshot.png" alt="Dropdown" width="360"> | <img src="docs/settings.png" alt="Settings" width="360"> |
 
 ## How it works
 

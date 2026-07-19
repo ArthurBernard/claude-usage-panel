@@ -36,6 +36,8 @@ An extensions.gnome.org listing is planned — see [PUBLISHING.md](../PUBLISHING
 
 ## Settings
 
+<img src="settings.png" alt="Preferences window" width="420">
+
 Open via the dropdown's **Settings**, or:
 
 ```bash
