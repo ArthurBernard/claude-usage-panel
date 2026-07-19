@@ -5,6 +5,7 @@
 #   ./install.sh                    auto-detect this OS and install the sensible set
 #   ./install.sh gnome              GNOME Shell extension only
 #   ./install.sh statusline         Claude Code status line only
+#   ./install.sh mcp                MCP server (get_usage tool in Claude Code + Cursor)
 #   ./install.sh macos              build the macOS .app bundle
 #   ./install.sh gnome statusline   any combination
 #   ./install.sh update [target...]        reinstall what's already installed (upgrade)
@@ -208,6 +209,91 @@ JS
     ok "removed"
 }
 
+# ── MCP server (Claude Code + Cursor) ──────────────────────────────────────────
+install_mcp() {
+    info "MCP server (get_usage tool for Claude Code + Cursor)"
+    if ! command -v node >/dev/null; then
+        skip "mcp: Node.js not found on PATH"
+        return 0
+    fi
+    local src="$ROOT/mcp/server.js"
+    # .mjs so Node always treats it as ESM regardless of any nearby package.json.
+    local dest="$HOME/.claude/claude-usage-mcp.mjs"
+    act mkdir -p "$HOME/.claude"
+    act cp "$src" "$dest"
+    act chmod +x "$dest"
+
+    # Claude Code: register at user scope via the official CLI. Remove-then-add
+    # keeps the call idempotent (add fails if the name already exists).
+    if command -v claude >/dev/null; then
+        if $DRY; then
+            echo "  would: claude mcp add --scope user --transport stdio claude-usage -- node $dest"
+        else
+            claude mcp remove --scope user claude-usage >/dev/null 2>&1 || true
+            claude mcp add --scope user --transport stdio claude-usage -- node "$dest" >/dev/null
+            ok "registered in Claude Code (user scope)"
+        fi
+    else
+        skip "claude CLI not found — register manually: claude mcp add claude-usage -- node \"$dest\""
+    fi
+
+    # Cursor: merge our entry into ~/.cursor/mcp.json without touching others.
+    if [ -d "$HOME/.cursor" ]; then
+        if $DRY; then
+            echo "  would: merge claude-usage → node $dest into $HOME/.cursor/mcp.json"
+        else
+            DEST="$dest" node - "$HOME/.cursor/mcp.json" <<'JS'
+const fs = require('fs');
+const path = process.argv[2];
+let cfg = {};
+try { cfg = JSON.parse(fs.readFileSync(path, 'utf8')); } catch { /* fresh */ }
+cfg.mcpServers = cfg.mcpServers || {};
+cfg.mcpServers['claude-usage'] = {command: 'node', args: [process.env.DEST]};
+fs.writeFileSync(path, JSON.stringify(cfg, null, 2) + '\n');
+JS
+            ok "registered in Cursor (~/.cursor/mcp.json)"
+        fi
+    else
+        skip "Cursor not detected (no ~/.cursor) — skipped its mcp.json"
+    fi
+
+    if $DRY; then
+        ok "dry-run: no changes written"
+        return 0
+    fi
+    ok "installed to $dest — ask 'how much of my plan have I used?' in either app"
+}
+
+uninstall_mcp() {
+    info "MCP server"
+    local dest="$HOME/.claude/claude-usage-mcp.mjs"
+    if command -v claude >/dev/null; then
+        if $DRY; then
+            echo "  would: claude mcp remove --scope user claude-usage"
+        else
+            claude mcp remove --scope user claude-usage >/dev/null 2>&1 || true
+        fi
+    fi
+    if [ -f "$HOME/.cursor/mcp.json" ]; then
+        if $DRY; then
+            echo "  would: drop claude-usage from $HOME/.cursor/mcp.json"
+        elif command -v node >/dev/null; then
+            node - "$HOME/.cursor/mcp.json" <<'JS'
+const fs = require('fs');
+const path = process.argv[2];
+let cfg;
+try { cfg = JSON.parse(fs.readFileSync(path, 'utf8')); } catch { process.exit(0); }
+if (cfg.mcpServers && cfg.mcpServers['claude-usage']) {
+  delete cfg.mcpServers['claude-usage'];
+  fs.writeFileSync(path, JSON.stringify(cfg, null, 2) + '\n');
+}
+JS
+        fi
+    fi
+    act rm -f "$dest"
+    ok "removed"
+}
+
 # ── macOS .app bundle ───────────────────────────────────────────────────────────
 install_macos() {
     info "macOS app"
@@ -292,7 +378,7 @@ uninstall_macos() {
 }
 
 # ── Target resolution ───────────────────────────────────────────────────────────
-ALL_TARGETS="gnome statusline macos"
+ALL_TARGETS="gnome statusline mcp macos"
 
 # Print the targets that make sense for this machine, one per line.
 detect_targets() {
@@ -306,6 +392,10 @@ detect_targets() {
             ;;
     esac
     command -v node >/dev/null && echo statusline
+    if command -v node >/dev/null &&
+        { command -v claude >/dev/null || [ -d "$HOME/.cursor" ]; }; then
+        echo mcp
+    fi
 }
 
 # Print the targets currently installed on this machine, one per line. Drives
@@ -313,6 +403,7 @@ detect_targets() {
 installed_targets() {
     [ -d "$HOME/.local/share/gnome-shell/extensions/$UUID" ] && echo gnome
     [ -f "$HOME/.claude/claude-usage-statusline.mjs" ] && echo statusline
+    [ -f "$HOME/.claude/claude-usage-mcp.mjs" ] && echo mcp
     [ -d "/Applications/ClaudeUsagePanel.app" ] && echo macos
     return 0
 }
