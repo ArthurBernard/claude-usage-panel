@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-07-19
+
 ### Added
 
 - **MCP server** (`mcp/server.js`) — a zero-dependency stdio server exposing a
