@@ -15,9 +15,28 @@ gitleaks — the same set runs in CI on every push.
 
 ## Layout
 
+```text
+.
+├── claude-usage-panel@fschmutz.github.io/   # GNOME Shell extension
+│   ├── extension.js         # panel button, dropdown, alerts, sparkline
+│   ├── prefs.js             # libadwaita preferences
+│   └── lib/                 # claudeUsage.js · cost.js · cursorUsage.js · pure.js
+├── macos/                   # native SwiftUI MenuBarExtra app (SwiftPM)
+│   └── Sources/ClaudeUsagePanel/
+├── claude-code/             # Node status line for the Claude Code prompt
+│   └── statusline.js        # render one condensed line from stdin
+├── mcp/                     # MCP server: get_usage tool (Claude Code, Cursor…)
+│   └── server.js            # zero-dep stdio JSON-RPC, also the npx bin
+├── plugin/                  # Claude Code plugin wrapping the MCP server
+├── docs/                    # GitHub Pages site + the /install bootstrap
+└── install.sh               # unified installer (gnome · statusline · mcp · macos)
+```
+
 See the [Architecture](https://github.com/fschmutz/claude-usage-panel/wiki/Architecture)
-wiki page. Keep the GNOME (`lib/*.js`) and macOS (`Sources/**/*.swift`) data
-layers in sync — they mirror the same API shape.
+wiki page. The normalization contract is duplicated per port (GNOME `lib/pure.js`,
+macOS `Model.swift`, MCP `mcp/server.js`) and kept identical by
+`tests/parity.test.js` + its Swift twin against one shared fixture
+(`tests/fixtures/normalize.json`) — change any port and the fixture together.
 
 ## Rules
 

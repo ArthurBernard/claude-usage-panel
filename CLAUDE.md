@@ -4,11 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Three native clients that surface Claude Code plan-usage limits from the official
+Four native clients that surface Claude Code plan-usage limits from the official
 Anthropic usage endpoint: a **GNOME Shell extension**, a **macOS SwiftUI menu-bar
-app**, and a **Node status line** for under the Claude Code prompt. All three read
-a locally-stored OAuth token read-only and render the same `limits[]` data. An
-optional Cursor team-spend section is available in the two desktop clients.
+app**, a **Node status line** for under the Claude Code prompt, and an **MCP
+server** (`mcp/server.js`) exposing a `get_usage` tool to Claude Code / Cursor
+(installable as a Claude Code plugin from `.claude-plugin/marketplace.json` +
+`plugin/`, or via `npx -y github:fschmutz/claude-usage-panel` — package.json has
+a `bin` entry). All read a locally-stored OAuth token read-only and render the
+same `limits[]` data. An optional Cursor team-spend section is available in the
+two desktop clients.
 
 ## Commands
 
@@ -25,10 +29,12 @@ cd macos && swift test
 pre-commit run --all-files
 pre-commit run eslint --all-files   # single hook
 
-# Install — one unified entrypoint for all three clients
+# Install — one unified entrypoint for all clients (also reachable with
+# curl -fsSL https://fschmutz.github.io/claude-usage-panel/install | bash [-s -- target…])
 ./install.sh                 # auto-detect OS → install the sensible set
 ./install.sh gnome           # GNOME extension only → then log out/in (Wayland)
 ./install.sh statusline      # status line → merges into ~/.claude/settings.json
+./install.sh mcp             # MCP server → claude mcp add + ~/.cursor/mcp.json
 ./install.sh macos           # build macos/ClaudeUsagePanel.app
 ./install.sh update [target...]        # reinstall installed targets (upgrade); --pull to git pull first
 ./install.sh --uninstall [target...]   # reverse it   |   --list (detected + installed)   |   -h
@@ -57,6 +63,12 @@ summarization, you must change it in **every** port and keep them matching.
   lib/pure.js" — keep it that way.
 - **`claude-code/statusline.js`** — standalone, zero-dependency Node; re-derives
   the same normalization for the terminal one-liner.
+- **`mcp/server.js`** — standalone, zero-dependency Node MCP server (stdio
+  JSON-RPC); duplicates `normalizeUsage` as the fourth port and is asserted
+  against the shared fixture in `tests/parity.test.js`. Carries an exported
+  `VERSION` const kept in sync by `scripts/bump-version.sh` and guarded by
+  `scripts/check-versions.sh` (with `plugin/.claude-plugin/plugin.json` and
+  `.claude-plugin/marketplace.json`).
 
 **Parity is CI-enforced.** `tests/fixtures/normalize.json` is one shared set of
 raw payloads + expected core output; `tests/parity.test.js` runs it through both

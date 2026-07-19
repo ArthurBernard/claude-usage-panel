@@ -8,6 +8,26 @@ semantic versioning.
 
 ### Added
 
+- **MCP server** (`mcp/server.js`) — a zero-dependency stdio server exposing a
+  `get_usage` tool, so Claude Code and Cursor can answer "how much of my plan
+  have I used?" in-conversation. Fourth port of the shared normalization
+  contract, parity-tested with the others; `tests/mcp.test.js` covers the
+  JSON-RPC plumbing end-to-end. Runs from anywhere via
+  `npx -y github:fschmutz/claude-usage-panel` (new `bin` entry).
+- **`install.sh mcp` target** — copies the server to
+  `~/.claude/claude-usage-mcp.mjs` and registers it in Claude Code
+  (`claude mcp add`, user scope) and Cursor (`~/.cursor/mcp.json` merge),
+  with matching `--uninstall`, detection, and `--dry-run`.
+- **Claude Code plugin + marketplace** (`.claude-plugin/marketplace.json`,
+  `plugin/`) — `/plugin marketplace add fschmutz/claude-usage-panel` then
+  `/plugin install claude-usage@claude-usage-panel` installs the usage tool
+  without cloning anything.
+- **One-line installer** — `curl -fsSL
+  https://fschmutz.github.io/claude-usage-panel/install | bash` clones or
+  updates `~/.local/share/claude-usage-panel` and forwards to `install.sh`
+  (targets and flags pass through with `bash -s -- …`).
+- Landing page: per-target install tabs with **copy buttons**, a one-click
+  **Add to Cursor** deep-link button, and an MCP feature card.
 - Releases now also carry the **macOS `.app`** (built on a macOS runner, ad-hoc
   signed, zipped) alongside the GNOME extension zip.
 - The status-line installer **backs up an existing (foreign) status line** and
@@ -46,6 +66,12 @@ semantic versioning.
   were removed from the status line, and it is no longer part of the cross-port
   normalization parity test (which now binds `lib/pure.js` ↔ the Swift core, the
   two ports that still fetch and normalize). Based on @Giovannibthx's #8.
+- **README restructured** around one canonical home per topic: a one-line
+  install + target table up top, deep detail moved to per-target docs (new
+  `docs/GNOME.md`; existing `macos/`, `claude-code/`, new `mcp/` READMEs), the
+  repo tree into `CONTRIBUTING.md`. No content dropped — everything moved.
+- `scripts/bump-version.sh` + `scripts/check-versions.sh` now cover the new
+  version sites (MCP server const, plugin manifest, marketplace entry).
 
 ## [1.4.0] — 2026-07-13
 
