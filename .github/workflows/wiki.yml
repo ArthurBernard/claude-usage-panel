@@ -1,0 +1,24 @@
+name: wiki
+
+# The wiki/ directory in the main repo is the single source of truth for the
+# GitHub wiki. On every push to main that touches it, mirror it to
+# <repo>.wiki.git so nobody ever has to clone the wiki repo by hand.
+# (Do not edit pages through the GitHub wiki UI — this sync overwrites them.)
+on:
+  push:
+    branches: [main]
+    paths: ["wiki/**", "scripts/wiki-sync.sh", ".github/workflows/wiki.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Publish wiki/ to the GitHub wiki
+        env:
+          WIKI_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git
+        run: ./scripts/wiki-sync.sh

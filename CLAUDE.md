@@ -110,6 +110,11 @@ with the user's Admin API key.
 
 ## Conventions
 
+- **The GitHub wiki is generated** — its source of truth is `wiki/*.md` in this
+  repo, auto-published to `<repo>.wiki.git` by `.github/workflows/wiki.yml`
+  (`scripts/wiki-sync.sh`) on every push to main touching `wiki/**`. Never
+  clone or edit the wiki repo directly; the sync overwrites it.
+
 - ESLint runs with `--max-warnings=0`; Swift with `swift format lint --strict`.
   Shell is shellcheck + shfmt (`-i 4 -ci`). All gated by pre-commit **and** CI.
 - Bump `version` in `package.json`, `version-name` in `metadata.json`, and update
