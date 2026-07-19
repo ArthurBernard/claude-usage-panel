@@ -29,6 +29,12 @@ bump_json() { # <file> <key>
 }
 bump_json package.json version
 bump_json claude-usage-panel@fschmutz.github.io/metadata.json version-name
+bump_json plugin/.claude-plugin/plugin.json version
+bump_json .claude-plugin/marketplace.json version
+
+# MCP server: standalone file, so the version is an exported const.
+V="$V" perl -pi -e "s/(^export const VERSION = ')\\d+\\.\\d+\\.\\d+(';)/\${1}\$ENV{V}\${2}/" mcp/server.js
+echo "  mcp/server.js → $V"
 
 # Homebrew cask example in PUBLISHING.md: `  version "x.y.z"`.
 V="$V" perl -pi -e 's/^(  version ")\d+\.\d+\.\d+(")/${1}$ENV{V}${2}/' PUBLISHING.md

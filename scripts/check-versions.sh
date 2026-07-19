@@ -29,6 +29,16 @@ meta="$(sed -nE 's/.*"version-name": *"([^"]+)".*/\1/p' \
 cask="$(sed -nE 's/^  version "([0-9]+\.[0-9]+\.[0-9]+)".*/\1/p' PUBLISHING.md | head -1)"
 [ "$cask" = "$want" ] || note "PUBLISHING.md cask version is '$cask', expected '$want'"
 
+# MCP server exported VERSION const must match.
+mcp="$(sed -nE "s/^export const VERSION = '([^']+)';.*/\1/p" mcp/server.js | head -1)"
+[ "$mcp" = "$want" ] || note "mcp/server.js VERSION is '$mcp', expected '$want'"
+
+# Claude Code plugin manifest + marketplace entry must match.
+plug="$(sed -nE 's/.*"version": *"([^"]+)".*/\1/p' plugin/.claude-plugin/plugin.json | head -1)"
+[ "$plug" = "$want" ] || note "plugin/.claude-plugin/plugin.json version is '$plug', expected '$want'"
+mkt="$(sed -nE 's/.*"version": *"([^"]+)".*/\1/p' .claude-plugin/marketplace.json | head -1)"
+[ "$mkt" = "$want" ] || note ".claude-plugin/marketplace.json plugin version is '$mkt', expected '$want'"
+
 # install.sh must read the macOS bundle version from package.json, never hardcode
 # it — the plist lines must interpolate \$ver, not a literal semver.
 if grep -nE 'CFBundle(Short)?Version(String)?</key><string>[0-9]+\.[0-9]+\.[0-9]+<' install.sh; then
