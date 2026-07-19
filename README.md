@@ -12,7 +12,7 @@ team-spend section.
 ![GNOME Shell 45–50](https://img.shields.io/badge/GNOME%20Shell-45--50-4A86CF?logo=gnome&logoColor=white)
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-000000?logo=apple&logoColor=white)
 ![Swift 6.1](https://img.shields.io/badge/Swift-6.1-F05138?logo=swift&logoColor=white)
-![MCP](https://img.shields.io/badge/MCP-Claude%20Code%20%2B%20Cursor-d97757)
+![MCP: Claude Code + Cursor](docs/badge-mcp.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-3DA639)
 ![Read-only](https://img.shields.io/badge/credentials-read--only-2ea44f)
 
@@ -123,8 +123,8 @@ MIT — see [LICENSE](LICENSE).
 
 ---
 
-<div align="center"><sub>
+<div align="center">
 
-Keywords: Claude Code usage monitor · Claude usage GNOME Shell extension · Claude plan limits top bar · macOS menu bar Claude usage · Claude Code status line usage · Claude usage MCP server · Add to Cursor MCP · Anthropic usage API · ccusage · Fable / Opus per-model weekly limit · Cursor Admin API spend · Ubuntu GNOME extension · SwiftUI MenuBarExtra
+<em>Keywords: Claude Code usage monitor · Claude usage GNOME Shell extension · Claude plan limits top bar · macOS menu bar Claude usage · Claude Code status line usage · Claude usage MCP server · Add to Cursor MCP · Anthropic usage API · ccusage · Fable / Opus per-model weekly limit · Cursor Admin API spend · Ubuntu GNOME extension · SwiftUI MenuBarExtra</em>
 
-</sub></div>
+</div>
