@@ -43,6 +43,13 @@ export function clampPercent(v) {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
+// Which pool a limit draws from. The API sends `group` ("session" / "weekly");
+// payloads that predate it are grouped by the kind prefix instead.
+function groupOf(kind, group) {
+  if (group) return group;
+  return String(kind).startsWith('weekly') ? 'weekly' : String(kind);
+}
+
 function normalizeLimit(entry) {
   let label = KIND_LABELS[entry.kind] ?? entry.kind;
   const model = entry.scope?.model?.display_name;
@@ -50,6 +57,8 @@ function normalizeLimit(entry) {
   return {
     key: entry.kind + (model ? `:${model}` : ''),
     label,
+    group: groupOf(entry.kind, entry.group),
+    scoped: Boolean(model),
     percent: clampPercent(entry.percent),
     severity: entry.severity ?? 'normal',
     resetsAt: entry.resets_at ?? null,
@@ -57,11 +66,24 @@ function normalizeLimit(entry) {
   };
 }
 
+// A scoped (per-model) limit is a sub-cap ON its group's pooled limit, not a
+// pool of its own: Fable usage counts toward `weekly_all` and shares its reset.
+// The API leaves the scoped `resets_at` null until that model is used in the
+// window, so borrow the pooled reset.
+function inheritPooledResets(cards) {
+  for (const card of cards) {
+    if (!card.scoped || card.resetsAt) continue;
+    const pooled = cards.find((o) => !o.scoped && o.group === card.group && o.resetsAt);
+    if (pooled) card.resetsAt = pooled.resetsAt;
+  }
+  return cards;
+}
+
 // Extract normalized limit cards from the raw usage payload. Prefers the modern
 // `limits[]` array; falls back to legacy five_hour / seven_day fields.
 export function normalizeUsage(payload) {
   if (Array.isArray(payload?.limits) && payload.limits.length) {
-    return payload.limits.map(normalizeLimit).sort((a, b) => {
+    return inheritPooledResets(payload.limits.map(normalizeLimit)).sort((a, b) => {
       const ai = KIND_ORDER.indexOf(a.key.split(':')[0]);
       const bi = KIND_ORDER.indexOf(b.key.split(':')[0]);
       return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
@@ -71,6 +93,7 @@ export function normalizeUsage(payload) {
   if (Number.isFinite(Number(payload?.five_hour?.utilization))) {
     cards.push({
       key: 'session', label: KIND_LABELS.session,
+      group: 'session', scoped: false,
       percent: clampPercent(payload.five_hour.utilization),
       severity: 'normal', resetsAt: payload.five_hour.resets_at ?? null, active: true,
     });
@@ -78,11 +101,19 @@ export function normalizeUsage(payload) {
   if (Number.isFinite(Number(payload?.seven_day?.utilization))) {
     cards.push({
       key: 'weekly_all', label: KIND_LABELS.weekly_all,
+      group: 'weekly', scoped: false,
       percent: clampPercent(payload.seven_day.utilization),
       severity: 'normal', resetsAt: payload.seven_day.resets_at ?? null, active: false,
     });
   }
   return cards;
+}
+
+// Note for a scoped (per-model) card: its percent is a *share* of the weekly
+// pool (on Max, up to 50 % of the weekly allowance may go to Fable), never
+// extra headroom — every Fable token also moves `weekly_all`.
+export function poolNote(card) {
+  return card?.scoped && card.group === 'weekly' ? 'share of the weekly all-models limit' : '';
 }
 
 // "resets in 3h06m" / "4d2h" — the two most significant units, like the
@@ -188,6 +219,8 @@ export function renderCards(cards, now = Date.now()) {
     const parts = [`**${c.label}** — ${c.percent}%`];
     if (c.severity !== 'normal') parts.push(c.severity.toUpperCase());
     if (reset) parts.push(`resets in ${reset}`);
+    const note = poolNote(c);
+    if (note) parts.push(note);
     return `- ${parts.join(' · ')}`;
   }).join('\n');
 }
@@ -200,7 +233,9 @@ const GET_USAGE_TOOL = {
   description:
     'Current Claude plan usage: session, weekly, and per-model limits — ' +
     'percent used, severity, and reset time for each, from the official ' +
-    'Anthropic usage endpoint (same numbers as /usage).',
+    'Anthropic usage endpoint (same numbers as /usage). A per-model limit ' +
+    '(scoped:true, e.g. Fable) caps a share of the weekly all-models pool and ' +
+    'draws from it — it is not extra quota.',
   inputSchema: {type: 'object', properties: {}, additionalProperties: false},
   outputSchema: {
     type: 'object',
@@ -212,12 +247,17 @@ const GET_USAGE_TOOL = {
           properties: {
             key: {type: 'string'},
             label: {type: 'string'},
+            group: {type: 'string', description: 'pool this limit draws from: session | weekly'},
+            scoped: {
+              type: 'boolean',
+              description: 'per-model sub-cap of the group pool, not a pool of its own',
+            },
             percent: {type: 'integer', minimum: 0, maximum: 100},
             severity: {type: 'string', enum: ['normal', 'warning', 'critical']},
             resetsAt: {type: ['string', 'null']},
             active: {type: 'boolean'},
           },
-          required: ['key', 'label', 'percent', 'severity'],
+          required: ['key', 'label', 'group', 'scoped', 'percent', 'severity'],
         },
       },
     },

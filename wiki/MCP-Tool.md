@@ -6,6 +6,11 @@ per-model limits (Fable, Opus…) with percent, severity, and reset countdown �
 the same data as the desktop panels, from the official Anthropic usage
 endpoint.
 
+Each limit carries `group` (`session` / `weekly`) and `scoped`. A scoped limit
+(Fable) is a **sub-cap of its group's pool** — that usage also counts toward
+`weekly_all` and shares its reset — so the rendered line says "share of the
+weekly all-models limit" instead of implying extra quota.
+
 Zero dependencies, stdio transport, read-only: it reads the OAuth token Claude
 Code already stores locally (`~/.claude/.credentials.json` on Linux, the login
 Keychain on macOS) and never writes it.

@@ -71,6 +71,9 @@ Login Items ▸ **+**.)
 ## Notes
 
 - The menu bar title shows the worst limit, e.g. `✳ Fable 100%`.
+- A per-model card (Fable) is a sub-cap of the weekly all-models pool — that
+  usage also counts toward the weekly limit and shares its reset — so the card
+  says "Share of the weekly all-models limit" under the countdown.
 - Toggle **Cost** and change the **Refresh** interval directly in the dropdown;
   both persist via `UserDefaults`.
 - **Quit** terminates the app. Remove it from Login Items to stop it starting

@@ -40,6 +40,33 @@ final class UsageNormalizerTests: XCTestCase {
         XCTAssertTrue(UsageNormalizer.normalize(["limits": [[String: Any]]()]).isEmpty)
     }
 
+    /// Fable draws from the weekly all-models pool, so its card is a sub-cap that
+    /// shares the pooled reset — the API only fills the scoped `resets_at` once
+    /// Fable has been used in the window.
+    func testScopedLimitInheritsPooledResetAndCarriesNote() {
+        let cards = UsageNormalizer.normalize([
+            "limits": [
+                [
+                    "kind": "weekly_all", "group": "weekly", "percent": 28,
+                    "resets_at": "2026-07-28T06:00:00Z", "is_active": true,
+                ],
+                [
+                    "kind": "weekly_scoped", "group": "weekly", "percent": 0,
+                    "resets_at": NSNull(), "is_active": false,
+                    "scope": ["model": ["display_name": "Fable"]],
+                ],
+            ]
+        ])
+        let fable = cards.first { $0.id == "weekly_scoped:Fable" }
+        XCTAssertEqual(fable?.group, "weekly")
+        XCTAssertEqual(fable?.scoped, true)
+        XCTAssertEqual(fable?.resetsAt, UsageNormalizer.parseDate("2026-07-28T06:00:00Z"))
+        XCTAssertEqual(UsageNormalizer.poolNote(fable!), "Share of the weekly all-models limit")
+        let weekly = cards.first { $0.id == "weekly_all" }!
+        XCTAssertEqual(weekly.scoped, false)
+        XCTAssertEqual(UsageNormalizer.poolNote(weekly), "")
+    }
+
     func testPercentClampAndRound() {
         let cards = UsageNormalizer.normalize([
             "limits": [["kind": "session", "percent": 142.6]]
@@ -73,6 +100,8 @@ final class NormalizeParityTests: XCTestCase {
                 let card = cards[i]
                 XCTAssertEqual(
                     card.id.components(separatedBy: ":")[0], e["kind"] as? String, "kind — \(name)")
+                XCTAssertEqual(card.group, e["group"] as? String, "group — \(name)")
+                XCTAssertEqual(card.scoped, e["scoped"] as? Bool, "scoped — \(name)")
                 XCTAssertEqual(card.percent, e["percent"] as? Int, "percent — \(name)")
                 XCTAssertEqual(
                     card.severity.rawValue, e["severity"] as? String, "severity — \(name)")

@@ -6,6 +6,10 @@ session, weekly, and per-model (Fable, Opus…) — each with a percent, severit
 color, sparkline trend, and reset countdown. Desktop notifications fire when
 any limit first crosses 90% or 100%.
 
+Per-model cards read "Share of the weekly all-models limit" under the
+countdown: that usage draws from the weekly pool (on Max, up to 50% of the
+weekly allowance may go to Fable) rather than adding a pool of its own.
+
 Requires GNOME Shell 45–50.
 
 ## Install

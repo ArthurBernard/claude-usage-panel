@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 
 import {
     clampPercent, severityClass, normalizeUsage, sparkline,
-    formatResets, alertThreshold, summarizeCursorSpend, summarizeCursorToday,
+    formatResets, alertThreshold, poolNote,
+    summarizeCursorSpend, summarizeCursorToday,
 } from '../claude-usage-panel@fschmutz.github.io/lib/pure.js';
 
 test('clampPercent clamps and rounds', () => {
@@ -37,6 +38,40 @@ test('normalizeUsage reads limits[] incl per-model, sorted', () => {
     assert.equal(fable.percent, 100);
     assert.equal(fable.severity, 'critical');
     assert.equal(fable.active, true);
+});
+
+test('per-model limit is a weekly sub-cap: inherits the pooled reset + carries a note', () => {
+    const cards = normalizeUsage({
+        limits: [
+            {kind: 'weekly_all', group: 'weekly', percent: 28, severity: 'normal',
+                resets_at: '2026-07-28T06:00:00Z', is_active: true},
+            // The API leaves the scoped reset null until Fable is used this week.
+            {kind: 'weekly_scoped', group: 'weekly', percent: 0, severity: 'normal',
+                resets_at: null, is_active: false,
+                scope: {model: {display_name: 'Fable'}}},
+        ],
+    });
+    const fable = cards.find(c => c.key === 'weekly_scoped:Fable');
+    assert.equal(fable.group, 'weekly');
+    assert.equal(fable.scoped, true);
+    assert.equal(fable.resetsAt, '2026-07-28T06:00:00Z');
+    assert.equal(poolNote(fable), 'Share of the weekly all-models limit');
+    const weekly = cards.find(c => c.key === 'weekly_all');
+    assert.equal(weekly.scoped, false);
+    assert.equal(poolNote(weekly), '');
+});
+
+test('a scoped limit inherits a reset only from its own pool', () => {
+    const cards = normalizeUsage({
+        limits: [
+            {kind: 'session', group: 'session', percent: 12, severity: 'normal',
+                resets_at: '2026-07-26T15:50:00Z', is_active: true},
+            {kind: 'weekly_scoped', group: 'weekly', percent: 0, severity: 'normal',
+                resets_at: null, is_active: false,
+                scope: {model: {display_name: 'Fable'}}},
+        ],
+    });
+    assert.equal(cards.find(c => c.key === 'weekly_scoped:Fable').resetsAt, null);
 });
 
 test('normalizeUsage falls back to legacy fields', () => {

@@ -75,6 +75,18 @@ test('renderCards — empty input explains itself', () => {
     assert.match(renderCards([]), /No plan limits/);
 });
 
+test('renderCards — a per-model card says it draws from the weekly pool', () => {
+    const now = Date.parse('2026-07-26T12:00:00Z');
+    const [weekly, fable] = renderCards([
+        {label: 'Weekly · all models', group: 'weekly', scoped: false, percent: 28,
+            severity: 'normal', resetsAt: '2026-07-28T06:00:00Z'},
+        {label: 'Weekly · Fable', group: 'weekly', scoped: true, percent: 0,
+            severity: 'normal', resetsAt: '2026-07-28T06:00:00Z'},
+    ], now).split('\n');
+    assert.equal(weekly.includes('share of the weekly all-models limit'), false);
+    assert.match(fable, /share of the weekly all-models limit$/);
+});
+
 // ── readAccessToken ─────────────────────────────────────────────────────────────
 
 const tmpHome = contents => {

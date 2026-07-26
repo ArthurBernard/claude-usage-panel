@@ -18,7 +18,7 @@ import {fetchUsage} from './lib/claudeUsage.js';
 import {fetchActiveCost} from './lib/cost.js';
 import {fetchCursor} from './lib/cursorUsage.js';
 import {
-    severityClass, sparkline, formatResets, alertThreshold,
+    severityClass, sparkline, formatResets, alertThreshold, poolNote,
 } from './lib/pure.js';
 
 const TRACK_WIDTH = 300; // px, must match .cu-track min-width in stylesheet.css
@@ -63,7 +63,12 @@ class UsageCard extends St.BoxLayout {
         const px = Math.round((card.percent / 100) * TRACK_WIDTH);
         this._fill.style_class = `cu-fill ${sev}`;
         this._fill.style = `width: ${px}px;`;
-        this._reset.text = formatResets(card.resetsAt);
+        // A per-model card (Fable) caps a share of the weekly pool rather than
+        // adding one, so its reset line carries that note — same reset as the
+        // all-models card it draws from.
+        const reset = formatResets(card.resetsAt);
+        const note = poolNote(card);
+        this._reset.text = [reset, note].filter(s => s).join(' · ');
         const spark = sparkline(history);
         this._spark.text = spark;
         this._spark.visible = spark.length > 0;

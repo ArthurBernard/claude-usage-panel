@@ -70,6 +70,7 @@ plus terminal and in-conversation projections.
 | | |
 |---|---|
 | 📊 **All plan limits** | Session, weekly, per-model — one card each, severity colors + reset timers from the API |
+| 🧮 **Pool-aware** | A per-model card (Fable) is labelled as a *share of* the weekly all-models limit, not extra quota — because that is what it is |
 | 🔔 **Alerts + sparklines** | Desktop notification at 90% / 100%, tiny trend graph per limit |
 | 💲 **Optional extras** | Local [`ccusage`](https://github.com/ryoppippi/ccusage) session cost · Cursor team spend via Admin API |
 | 🔒 **Read-only & private** | Uses your existing local token, never writes it, no telemetry, talks only to official APIs |

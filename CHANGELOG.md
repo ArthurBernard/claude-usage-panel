@@ -6,6 +6,24 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **Per-model limits are now shown as what they are: a share of the weekly
+  pool.** Fable usage draws from the weekly all-models limit (on Max, up to 50%
+  of the weekly allowance may go to Fable) rather than from a pool of its own —
+  confirmed against the live endpoint on 2026-07-26 and Anthropic's Fable 5
+  help-center page. Every port's card now carries `group` (`session` / `weekly`)
+  and `scoped`, the GNOME / macOS cards and the MCP tool output carry a "share
+  of the weekly all-models limit" note, and the MCP `get_usage` output schema
+  exposes both new fields.
+
+### Fixed
+
+- **A per-model card no longer loses its reset countdown.** The API leaves the
+  scoped `resets_at` null until that model is used in the window, so a scoped
+  card now inherits the reset of the pooled limit it draws from — the Fable card
+  showed a percent with no countdown for any week Fable hadn't been touched yet.
+
 ## [1.5.0] — 2026-07-19
 
 ### Added

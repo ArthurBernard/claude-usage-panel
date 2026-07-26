@@ -97,7 +97,9 @@ Claude Code provides them.
 **Per-model (Fable) weekly limits are not shown here** — Claude Code's stdin
 never exposes them; they come only from the OAuth usage endpoint, which the
 GNOME extension and macOS app read. The terminal line is deliberately the cheap
-stdin-only projection. The token sums are cached on disk (keyed by the
+stdin-only projection. Nothing is hidden from the **Week** gauge by that:
+per-model usage draws from the same weekly pool, so Fable tokens are already
+counted in it. The token sums are cached on disk (keyed by the
 transcript's size + modification time), so a long, multi-megabyte transcript
 isn't re-read on every prompt refresh.
 

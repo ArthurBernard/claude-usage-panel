@@ -264,7 +264,13 @@ private struct CardView: View {
             }
             ProgressBar(percent: card.percent, color: color)
             HStack {
-                Text(resetsText(card.resetsAt)).font(.system(size: 11))
+                // A per-model card (Fable) caps a share of the weekly pool rather
+                // than adding one, so its reset line carries that note — same
+                // reset as the all-models card it draws from.
+                Text(
+                    [resetsText(card.resetsAt), UsageNormalizer.poolNote(card)]
+                        .filter { !$0.isEmpty }.joined(separator: " · ")
+                ).font(.system(size: 11))
                     .foregroundColor(.secondary)
                 Spacer()
                 if !spark.isEmpty {

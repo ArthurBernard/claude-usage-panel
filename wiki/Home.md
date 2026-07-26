@@ -30,3 +30,9 @@ curl -fsSL https://fschmutz.github.io/claude-usage-panel/install | bash
 Session, weekly (all models), and **per-model** weekly limits (Fable, Opus…) from the official
 `api.anthropic.com/api/oauth/usage` endpoint — with severity colors, reset timers, limit-crossing
 alerts, a usage sparkline, and an optional session cost.
+
+A per-model limit is a **sub-cap of the weekly all-models pool**, not a separate
+allowance: Fable usage counts toward the weekly limit (on Max, up to 50% of it
+may go to Fable) and resets with it. The clients label those cards accordingly
+and give them the weekly reset countdown even before the model is first used in
+the window — the API leaves the scoped `resets_at` null until then.

@@ -24,6 +24,8 @@ const {cases} = JSON.parse(fs.readFileSync(path.join(here, 'fixtures', 'normaliz
 // `key` is pure.js's "kind:model"; labels are port-specific and not compared.
 const core = (c) => ({
     kind: c.key.split(':')[0],
+    group: c.group,
+    scoped: c.scoped,
     percent: c.percent,
     severity: c.severity,
     resetsAt: c.resetsAt ?? null,

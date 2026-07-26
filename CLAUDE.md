@@ -82,6 +82,15 @@ The normalization contract (must stay identical across ports):
   utilization fields only when `limits[]` is absent/empty.
 - `KIND_ORDER` / `kindOrder` defines card sort order; per-model limits get a
   `label · <model display_name>` suffix and a `kind:model` composite key.
+- Every card carries `group` (from the payload's `group`, else derived from the
+  kind prefix: `weekly_*` → `weekly`) and `scoped` (a per-model limit). A scoped
+  limit is a **sub-cap of its group's pool, not a pool of its own** — Fable
+  usage also moves `weekly_all` and shares its reset (verified live
+  2026-07-26 + the Fable-5 help-center page: on Max up to 50% of the weekly
+  allowance may go to Fable). Two consequences all ports implement: a scoped
+  card with a null `resets_at` inherits the pooled card's reset (the API fills
+  the scoped one only after that model is used in the window), and `poolNote()`
+  returns the "share of the weekly all-models limit" sub-line the UIs render.
 - `clampPercent` → 0..100 int; `severity` comes straight from the API
   (normal/warning/critical) and also drives the top-bar glyph color.
 - `alertThreshold` buckets to 0/90/100 for limit-crossing notifications.
