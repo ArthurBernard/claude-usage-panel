@@ -23,6 +23,7 @@ uninstalls every client.
 | `./install.sh statusline` | Claude Code status line |
 | `./install.sh mcp` | `get_usage` MCP tool → Claude Code + Cursor |
 | `./install.sh macos` | build + install the macOS `.app` |
+| `./install.sh autoupdate` | daily check for a new release + auto-install |
 | `./install.sh update [target…]` | reinstall what's already installed (upgrade) |
 | `./install.sh update --pull` | `git pull` first, then upgrade |
 | `./install.sh --uninstall [target…]` | reverse an install |
@@ -83,9 +84,37 @@ claude mcp add claude-usage -- npx -y github:fschmutz/claude-usage-panel
 
 See [[MCP Tool]].
 
-## Updating
+## Staying up to date
 
-To upgrade an existing install to the latest code:
+### Automatically (on by default)
+
+Installing from a git checkout also schedules a **daily update check** — the
+`autoupdate` target. Once a day it reads the highest released `vX.Y.Z` tag on
+`origin`; if that's newer than your `package.json` version it fast-forwards the
+checkout and runs `install.sh update`, so every client you have moves to the new
+release without you doing anything. A desktop notification says when it lands.
+
+| | |
+|---|---|
+| Linux | systemd user timer `claude-usage-panel-update.timer` (`OnCalendar=daily`, `Persistent=true`, so a missed day runs at next login) |
+| macOS | launchd agent `io.github.fschmutz.claude-usage-panel.update`, daily at 11:17 |
+| Neither | a `cron` line tagged `# claude-usage-panel auto-update` |
+
+```bash
+scripts/auto-update.sh --status     # installed vs latest, and when it last looked
+scripts/auto-update.sh --check      # look now, install nothing (exit 10 = update waiting)
+scripts/auto-update.sh              # look now, and install it if there is one
+./install.sh --uninstall autoupdate # turn the daily check off
+```
+
+It is deliberately timid about your checkout: it **only ever fast-forwards**
+(no merge, rebase, reset or stash), and it skips — logging the reason, changing
+nothing — when the worktree is dirty, the branch is diverged or detached, there
+is no `origin`, or the network is down. It also reinstalls **only** the targets
+already installed, so it never adds a client you didn't want. The rolling log
+is `~/.local/state/claude-usage-panel/auto-update.log`.
+
+### By hand
 
 ```bash
 ./install.sh update --pull      # git pull, then reinstall whatever you have

@@ -7,6 +7,7 @@
 #   ./install.sh statusline         Claude Code status line only
 #   ./install.sh mcp                MCP server (get_usage tool in Claude Code + Cursor)
 #   ./install.sh macos              build the macOS .app bundle
+#   ./install.sh autoupdate         check for a new release once a day and install it
 #   ./install.sh gnome statusline   any combination
 #   ./install.sh update [target...]        reinstall what's already installed (upgrade)
 #   ./install.sh update --pull             git pull --ff-only first, then upgrade
@@ -377,8 +378,183 @@ uninstall_macos() {
     echo "  If it was set to start at login, remove it in System Settings ▸ General ▸ Login Items."
 }
 
+# ── Daily auto-update ───────────────────────────────────────────────────────────
+# Schedules scripts/auto-update.sh once a day. That script is the one with all
+# the safety rules (skips a dirty or diverged checkout, only ever fast-forwards,
+# reinstalls just the targets already present) — here we only wire the schedule.
+AU_UNIT="claude-usage-panel-update"                       # systemd user units
+AU_LABEL="io.github.fschmutz.claude-usage-panel.update"   # launchd agent
+AU_CRON_TAG="# claude-usage-panel auto-update"            # cron marker line
+
+_au_systemd_dir() { echo "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"; }
+_au_plist() { echo "$HOME/Library/LaunchAgents/$AU_LABEL.plist"; }
+
+# Which daily scheduler this machine offers: launchd | systemd | cron | none.
+_au_scheduler() {
+    if [ "$(uname -s)" = "Darwin" ] && command -v launchctl >/dev/null; then
+        echo launchd
+    elif command -v systemctl >/dev/null && [ -d /run/systemd/system ]; then
+        echo systemd
+    elif command -v crontab >/dev/null; then
+        echo cron
+    else
+        echo none
+    fi
+}
+
+# Write a unit/plist from stdin, honouring --dry-run (stdin is always consumed).
+_au_write() {
+    local path="$1"
+    if $DRY; then
+        cat >/dev/null
+        echo "  would: write $path"
+        return 0
+    fi
+    mkdir -p "$(dirname "$path")"
+    cat >"$path"
+}
+
+_au_installed() {
+    [ -f "$(_au_systemd_dir)/$AU_UNIT.timer" ] && return 0
+    [ -f "$(_au_plist)" ] && return 0
+    if command -v crontab >/dev/null && crontab -l 2>/dev/null | grep -qF "$AU_CRON_TAG"; then
+        return 0
+    fi
+    return 1
+}
+
+install_autoupdate() {
+    info "Daily auto-update"
+    if ! git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        skip "autoupdate: $ROOT is not a git checkout — nothing to update from"
+        return 0
+    fi
+    local runner="$ROOT/scripts/auto-update.sh"
+    act chmod +x "$runner"
+
+    case "$(_au_scheduler)" in
+        systemd)
+            local dir
+            dir="$(_au_systemd_dir)"
+            _au_write "$dir/$AU_UNIT.service" <<EOF
+[Unit]
+Description=Claude Usage Panel — daily update check
+Documentation=https://github.com/fschmutz/claude-usage-panel
+
+[Service]
+Type=oneshot
+ExecStart=$runner --quiet
+EOF
+            # Persistent=true runs a missed check on the next login (laptop was
+            # off); RandomizedDelaySec spreads the load off a round hour.
+            _au_write "$dir/$AU_UNIT.timer" <<EOF
+[Unit]
+Description=Claude Usage Panel — daily update check
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=4h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+            act systemctl --user daemon-reload
+            act systemctl --user enable --now "$AU_UNIT.timer"
+            $DRY || ok "systemd user timer enabled (systemctl --user list-timers | grep $AU_UNIT)"
+            ;;
+        launchd)
+            local plist
+            plist="$(_au_plist)"
+            _au_write "$plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$AU_LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>$runner</string>
+    <string>--quiet</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>11</integer><key>Minute</key><integer>17</integer></dict>
+  <key>RunAtLoad</key><false/>
+  <key>ProcessType</key><string>Background</string>
+  <key>LowPriorityIO</key><true/>
+</dict>
+</plist>
+EOF
+            if $DRY; then
+                echo "  would: launchctl bootstrap gui/$(id -u) $plist"
+            else
+                launchctl bootout "gui/$(id -u)/$AU_LABEL" >/dev/null 2>&1 || true
+                launchctl bootstrap "gui/$(id -u)" "$plist" >/dev/null 2>&1 ||
+                    launchctl load -w "$plist" >/dev/null 2>&1 || true
+            fi
+            $DRY || ok "launchd agent loaded (daily at 11:17)"
+            ;;
+        cron)
+            local line="17 11 * * * $runner --quiet  $AU_CRON_TAG"
+            if $DRY; then
+                echo "  would: add crontab line: $line"
+            else
+                # Drop any previous line of ours, then append — idempotent.
+                {
+                    crontab -l 2>/dev/null | grep -vF "$AU_CRON_TAG" || true
+                    echo "$line"
+                } | crontab -
+            fi
+            $DRY || ok "cron entry added (daily at 11:17)"
+            ;;
+        *)
+            skip "autoupdate: no systemd, launchd or cron found to schedule it"
+            return 0
+            ;;
+    esac
+
+    if $DRY; then
+        ok "dry-run: no changes written"
+        return 0
+    fi
+    echo "  Checks the newest released tag daily and installs it if it's newer."
+    echo "  It skips a dirty or diverged checkout, and only reinstalls targets you already have."
+    echo "  Now:  $runner --check    Status:  $runner --status"
+    echo "  Off:  ./install.sh --uninstall autoupdate"
+}
+
+uninstall_autoupdate() {
+    info "Daily auto-update"
+    # Remove all three wirings regardless of what this machine currently offers,
+    # so a schedule left by an earlier setup can't survive an uninstall.
+    if command -v systemctl >/dev/null; then
+        act systemctl --user disable --now "$AU_UNIT.timer" >/dev/null 2>&1 || true
+    fi
+    act rm -f "$(_au_systemd_dir)/$AU_UNIT.timer" "$(_au_systemd_dir)/$AU_UNIT.service"
+    if command -v systemctl >/dev/null; then
+        act systemctl --user daemon-reload >/dev/null 2>&1 || true
+    fi
+    if command -v launchctl >/dev/null; then
+        if $DRY; then
+            echo "  would: launchctl bootout gui/$(id -u)/$AU_LABEL"
+        else
+            launchctl bootout "gui/$(id -u)/$AU_LABEL" >/dev/null 2>&1 || true
+        fi
+    fi
+    act rm -f "$(_au_plist)"
+    if command -v crontab >/dev/null; then
+        if $DRY; then
+            echo "  would: drop the '$AU_CRON_TAG' line from your crontab"
+        elif crontab -l 2>/dev/null | grep -qF "$AU_CRON_TAG"; then
+            crontab -l 2>/dev/null | grep -vF "$AU_CRON_TAG" | crontab -
+        fi
+    fi
+    ok "removed (no more daily checks)"
+}
+
 # ── Target resolution ───────────────────────────────────────────────────────────
-ALL_TARGETS="gnome statusline mcp macos"
+ALL_TARGETS="gnome statusline mcp macos autoupdate"
 
 # Print the targets that make sense for this machine, one per line.
 detect_targets() {
@@ -396,6 +572,14 @@ detect_targets() {
         { command -v claude >/dev/null || [ -d "$HOME/.cursor" ]; }; then
         echo mcp
     fi
+    # Staying current is the default, but only where it can work: a git checkout
+    # to pull from and something to run a daily job. Opt out any time with
+    # `./install.sh --uninstall autoupdate`.
+    if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1 &&
+        [ "$(_au_scheduler)" != none ]; then
+        echo autoupdate
+    fi
+    return 0
 }
 
 # Print the targets currently installed on this machine, one per line. Drives
@@ -405,6 +589,7 @@ installed_targets() {
     [ -f "$HOME/.claude/claude-usage-statusline.mjs" ] && echo statusline
     [ -f "$HOME/.claude/claude-usage-mcp.mjs" ] && echo mcp
     [ -d "/Applications/ClaudeUsagePanel.app" ] && echo macos
+    _au_installed && echo autoupdate
     return 0
 }
 

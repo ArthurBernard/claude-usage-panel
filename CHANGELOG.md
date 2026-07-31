@@ -6,6 +6,23 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **Daily auto-update** — `scripts/auto-update.sh` checks the newest released
+  tag on `origin` once a day, fast-forwards the checkout when it's newer, and
+  runs `install.sh update` so every client you already have moves to the new
+  version by itself. Scheduled by the new `./install.sh autoupdate` target: a
+  systemd user timer on Linux, a launchd agent on macOS, a cron line as
+  fallback, all with matching `--uninstall`, `--list` detection and `--dry-run`.
+  It's part of the default detected set on a git checkout — turn it off with
+  `./install.sh --uninstall autoupdate`.
+  The script only ever `merge --ff-only`s, and skips (with a logged reason,
+  never a modification) when the worktree is dirty, the branch is diverged or
+  detached, the remote is missing, or another run holds the lock. Run it by hand
+  with `--check` (report only, exit 10 when an update is waiting), `--status`,
+  or `--force`; a rolling log lives in
+  `~/.local/state/claude-usage-panel/auto-update.log`.
+
 ### Changed
 
 - **Per-model limits are now shown as what they are: a share of the weekly

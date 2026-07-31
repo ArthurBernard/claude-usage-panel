@@ -36,13 +36,24 @@ pre-commit run eslint --all-files   # single hook
 ./install.sh statusline      # status line → merges into ~/.claude/settings.json
 ./install.sh mcp             # MCP server → claude mcp add + ~/.cursor/mcp.json
 ./install.sh macos           # build macos/ClaudeUsagePanel.app
+./install.sh autoupdate      # schedule the daily update check (systemd timer / launchd / cron)
 ./install.sh update [target...]        # reinstall installed targets (upgrade); --pull to git pull first
 ./install.sh --uninstall [target...]   # reverse it   |   --list (detected + installed)   |   -h
 ./install.sh --dry-run [target...]     # print actions without touching anything
 
 # Release: bump the version everywhere from one source of truth
 ./scripts/bump-version.sh 1.4.0
+
+# Daily auto-update worker (what the timer runs) — safe to run by hand
+./scripts/auto-update.sh --status    # installed vs newest released tag, last check
+./scripts/auto-update.sh --check     # check only; exit 10 = update available
 ```
+
+Auto-update reads the highest released `vX.Y.Z` tag on `origin`, so **a release
+only reaches users once the tag is pushed** — bumping `package.json` on main is
+not enough. It only ever `merge --ff-only`s, and skips a dirty, diverged or
+detached checkout rather than touching it; `tests/autoupdate.test.js` asserts
+each of those guards against a throwaway local bare remote (offline).
 
 There is **no build step for the GNOME extension or the status line** — they run
 the source files directly. `npm` is only a test runner; there are no runtime deps.
