@@ -16,7 +16,7 @@ team-spend section.
 ![License: MIT](https://img.shields.io/badge/license-MIT-3DA639)
 ![Read-only](https://img.shields.io/badge/credentials-read--only-2ea44f)
 
-<img src="docs/screenshot.png" alt="Claude Usage Panel dropdown: session, weekly, and per-model Fable limits with sparklines and an optional Cursor section" width="380">
+<img src="docs/screenshot.svg" alt="Claude Usage Panel dropdown: session, weekly, and per-model Fable limits with sparklines and an optional Cursor section" width="380">
 
 </div>
 
@@ -88,7 +88,7 @@ plus terminal and in-conversation projections.
 
 | Dropdown | Settings |
 |---|---|
-| <img src="docs/screenshot.png" alt="Dropdown" width="360"> | <img src="docs/settings.png" alt="Settings" width="360"> |
+| <img src="docs/screenshot.svg" alt="Dropdown" width="360"> | <img src="docs/settings.png" alt="Settings" width="360"> |
 
 ## How it works
 

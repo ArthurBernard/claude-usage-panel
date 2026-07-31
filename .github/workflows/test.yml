@@ -15,6 +15,19 @@ jobs:
           node-version: "22"
       - run: node --test "tests/*.test.js"
 
+  # The screenshots in docs/ are GENERATED from scripts/screenshots/data.json by
+  # code that drives the real shared logic (normalize, forecast, labels). A
+  # UI-visible contract change that forgets to regenerate them fails here:
+  #   node scripts/screenshots/render.mjs
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - run: node scripts/screenshots/render.mjs --check
+
   # Linux: fast parity gate — builds/tests only the Foundation-only core.
   swift-core:
     runs-on: ubuntu-latest

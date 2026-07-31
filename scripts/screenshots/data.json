@@ -1,0 +1,38 @@
+{
+  "comment": "Demo data for the generated screenshots — every number is fake. The clock is FIXED so the render is byte-deterministic and CI can drift-gate it. Times are UTC; the generator formats them with a fixed offset, never the host zone.",
+  "nowIso": "2026-08-01T14:24:00Z",
+  "plan": "Max (20x)",
+  "updated": "16:24",
+  "cards": [
+    {
+      "kind": "session",
+      "percent": 42,
+      "severity": "normal",
+      "resetsInMinutes": 186,
+      "history": [4, 9, 15, 18, 22, 26, 29, 33, 36, 38, 40, 42]
+    },
+    {
+      "kind": "weekly_all",
+      "percent": 72,
+      "severity": "normal",
+      "resetsInMinutes": 5160,
+      "paceHistoryHours": 3,
+      "paceStartPercent": 60,
+      "history": [51, 53, 55, 58, 60, 62, 64, 66, 68, 69, 70, 72]
+    },
+    {
+      "kind": "weekly_scoped",
+      "model": "Fable",
+      "percent": 12,
+      "severity": "normal",
+      "resetsInMinutes": 5160,
+      "history": [0, 0, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12]
+    }
+  ],
+  "cost": "Session cost: $2.14 · 340k tokens",
+  "cursor": {
+    "cycle": "This cycle: $842.10 · 3 members",
+    "today": "Today: $28.40",
+    "top": "Top: alice@example.com $410.22"
+  }
+}

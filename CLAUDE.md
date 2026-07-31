@@ -41,6 +41,10 @@ pre-commit run eslint --all-files   # single hook
 ./install.sh --uninstall [target...]   # reverse it   |   --list (detected + installed)   |   -h
 ./install.sh --dry-run [target...]     # print actions without touching anything
 
+# Screenshots are GENERATED — after any UI-visible contract change:
+node scripts/screenshots/render.mjs          # rewrites docs/screenshot.svg + og.svg
+node scripts/screenshots/render.mjs --check  # what CI runs; exits 1 on drift
+
 # Release: bump the version everywhere from one source of truth
 ./scripts/bump-version.sh 1.4.0
 

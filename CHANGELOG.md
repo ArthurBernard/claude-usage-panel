@@ -24,6 +24,14 @@ semantic versioning.
   The status line and MCP server share one local sample file
   (`$TMPDIR/claude-usage-history.json`) so each densifies the other's history —
   still no credentials, no network.
+- **Screenshots are now generated, and CI fails on drift.**
+  `scripts/screenshots/render.mjs` renders `docs/screenshot.svg` + `docs/og.svg`
+  (and rasterizes `og.png` when a rasterizer is present) from
+  `scripts/screenshots/data.json`, driving the real shared logic — normalize,
+  forecast, pool notes, sparklines — under a fixed clock, so the pictures
+  cannot drift from what the code renders. A `screenshots` CI job runs
+  `render.mjs --check`; forgetting to regenerate after a UI-visible change goes
+  red. README and the landing page now embed the SVG.
 
 ## [1.6.0] — 2026-08-01
 
