@@ -22,6 +22,12 @@ manual `gh release create` needed. To (re)release an existing tag, run the
 **release** workflow from the Actions tab with the tag as input. The macOS `.app`
 is not auto-attached yet (needs Developer ID signing / notarization — see below).
 
+**The tag is also what ships the release to existing users.** Every checkout with
+the `autoupdate` target installed (`scripts/auto-update.sh`, on by default) polls
+for the highest released `v*` tag once a day and installs it — so a version bump
+merged to `main` without a pushed tag reaches nobody. Push the tag, then the
+release is live for humans and for the daily updater alike.
+
 ## GNOME — extensions.gnome.org (EGO)
 
 A packaged zip is attached to each GitHub release

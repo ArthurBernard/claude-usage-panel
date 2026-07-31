@@ -27,13 +27,17 @@ Items. (Running a bare `swift run`/binary instead? Add it manually via Login Ite
 
 ## Updating
 
+A launchd agent (the `autoupdate` target, installed by default from a checkout)
+checks for a new release once a day and installs it for you — see
+[[Installation]]. On demand:
+
 ```bash
 ./install.sh update         # or: update --pull
 ```
 
 Quits the running app, replaces it in `/Applications`, and relaunches the new
 build — so the upgrade actually takes effect. `./install.sh --uninstall macos`
-removes it.
+removes it; `./install.sh --uninstall autoupdate` stops the daily check.
 
 ## Signing / notarization
 

@@ -62,11 +62,16 @@ gnome-extensions prefs claude-usage-panel@fschmutz.github.io
 
 ## Updating
 
+Installing from a checkout also schedules a **daily update check** (the
+`autoupdate` target — a systemd user timer), so new releases install themselves;
+you still need to log out / back in for the shell to load the new code. By hand:
+
 ```bash
 ./install.sh update --pull      # git pull, then reinstall whatever you have
 ```
 
-then log out / back in (Wayland). `./install.sh --uninstall gnome` removes it.
+then log out / back in (Wayland). `./install.sh --uninstall gnome` removes it,
+`./install.sh --uninstall autoupdate` stops the daily check.
 
 ## Developing
 

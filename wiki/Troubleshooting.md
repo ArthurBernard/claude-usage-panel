@@ -30,6 +30,22 @@ Re-check the Admin API key and that your account is a **team admin** (the Admin 
 
 Fixed in v1.2.1 — update and relog.
 
+## It's not updating itself
+
+```bash
+scripts/auto-update.sh --status                       # installed vs latest, last check
+tail -20 ~/.local/state/claude-usage-panel/auto-update.log
+systemctl --user list-timers | grep claude-usage-panel   # Linux
+launchctl list | grep claude-usage-panel                 # macOS
+```
+
+The log says why. Common reasons, all deliberate: the checkout has **local
+changes** or a **diverged / detached branch** (it never touches your work), there
+is **no newer released tag** yet (a `main` commit is not a release), the machine
+was **offline**, or the daily check was never installed —
+`./install.sh autoupdate` adds it, `./install.sh --list` shows whether it's
+there. Run `scripts/auto-update.sh` by hand any time to force a check.
+
 ## Logs (GNOME)
 
 ```bash

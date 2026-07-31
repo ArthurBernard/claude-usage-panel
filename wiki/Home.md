@@ -13,6 +13,9 @@ One-line install (auto-detects your platform):
 curl -fsSL https://fschmutz.github.io/claude-usage-panel/install | bash
 ```
 
+It then **keeps itself up to date**: a daily check installs each new release for
+you, and only ever fast-forwards a clean checkout — see [[Installation]].
+
 ## Pages
 
 - [[Installation]] — every client: GNOME, macOS, status line, MCP

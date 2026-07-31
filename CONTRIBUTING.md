@@ -29,7 +29,8 @@ gitleaks — the same set runs in CI on every push.
 │   └── server.js            # zero-dep stdio JSON-RPC, also the npx bin
 ├── plugin/                  # Claude Code plugin wrapping the MCP server
 ├── docs/                    # GitHub Pages site + the /install bootstrap
-└── install.sh               # unified installer (gnome · statusline · mcp · macos)
+├── scripts/                 # bump-version · check-versions · wiki-sync · auto-update
+└── install.sh               # unified installer (gnome · statusline · mcp · macos · autoupdate)
 ```
 
 See the [Architecture](https://github.com/fschmutz/claude-usage-panel/wiki/Architecture)

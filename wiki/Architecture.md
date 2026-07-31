@@ -35,8 +35,20 @@ mcp/                    # MCP server: get_usage tool (Claude Code, Cursor…)
 
 plugin/                 # Claude Code plugin wrapping the MCP server
 docs/                   # GitHub Pages site + the /install bootstrap
-install.sh              # unified installer (gnome · statusline · mcp · macos)
+scripts/                # bump-version · check-versions · wiki-sync · auto-update
+└── auto-update.sh      # daily: newest released tag → ff-only → install.sh update
+install.sh              # unified installer (gnome · statusline · mcp · macos · autoupdate)
 ```
+
+## Staying current
+
+`scripts/auto-update.sh` is the daily worker; the `autoupdate` install target only
+schedules it (systemd user timer · launchd agent · cron). It compares the highest
+released `vX.Y.Z` tag on `origin` against `package.json`, and on a newer one does
+`merge --ff-only` + `install.sh update` — which reinstalls only the targets already
+installed. Every other situation (dirty worktree, diverged or detached branch, no
+remote, offline, lock held) is a logged skip, never a modification. So **a release
+reaches users when its tag is pushed**, not when `main` moves.
 
 ## Data source
 

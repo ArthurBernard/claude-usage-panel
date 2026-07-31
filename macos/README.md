@@ -40,8 +40,12 @@ For a reusable `.app` bundle, run the unified installer from the repo root
 ./install.sh macos          # build, install to /Applications, launch
 ```
 
-To upgrade later, `./install.sh update` (or `update --pull`) quits the running
-app, replaces it in `/Applications`, and relaunches the new build.
+Upgrades take care of themselves: installing from a checkout also schedules a
+daily update check (a launchd agent, the `autoupdate` target), which rebuilds and
+relaunches the app when a new release is tagged. By hand it's `./install.sh
+update` (or `update --pull`) — it quits the running app, replaces it in
+`/Applications`, and relaunches the new build. `./install.sh --uninstall
+autoupdate` turns the daily check off.
 
 Or a bare release binary / Xcode:
 
