@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-08-01
+
 ### Added
 
 - **Daily auto-update** — `scripts/auto-update.sh` checks the newest released
