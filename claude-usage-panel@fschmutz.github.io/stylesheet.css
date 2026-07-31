@@ -104,6 +104,14 @@
     font-size: 11px;
 }
 
+/* burn-rate forecast sub-line: quiet when the pace outlasts the reset, amber
+   when the limit is on track to run out first */
+.cu-forecast {
+    color: #8f897e;
+    font-size: 11px;
+}
+.cu-forecast.cu-warning { color: #e0a458; }
+
 /* ---- optional Cursor section ---- */
 .cu-cursor {
     spacing: 3px;
@@ -141,7 +149,9 @@
 .cu-light .cu-track { background-color: rgba(0, 0, 0, 0.12); }
 .cu-light .cu-card-reset,
 .cu-light .cu-updated,
+.cu-light .cu-forecast,
 .cu-light .cu-spark { color: #6b6b60; }
+.cu-light .cu-forecast.cu-warning { color: #b3742a; }
 .cu-light .cu-cost { color: #333; }
 .cu-light .cu-plan { color: #666; }
 

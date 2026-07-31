@@ -19,9 +19,14 @@ import {fetchActiveCost} from './lib/cost.js';
 import {fetchCursor} from './lib/cursorUsage.js';
 import {
     severityClass, sparkline, formatResets, alertThreshold, poolNote,
+    forecast, formatForecast, normalizeHistory, historyPercents,
 } from './lib/pure.js';
 
 const TRACK_WIDTH = 300; // px, must match .cu-track min-width in stylesheet.css
+// Timestamped samples kept per limit — enough for the forecast's 6 h regression
+// window even at the 1-minute minimum refresh interval isn't needed; at the
+// 10-minute default this holds ~15 h of context. The sparkline shows the last 12.
+const HISTORY_MAX = 90;
 
 // One limit row: label, percentage, colored progress bar, reset time.
 const UsageCard = GObject.registerClass(
@@ -47,15 +52,17 @@ class UsageCard extends St.BoxLayout {
         track.set_child(this._fill);
 
         this._reset = new St.Label({style_class: 'cu-card-reset'});
+        this._forecast = new St.Label({style_class: 'cu-forecast'});
         this._spark = new St.Label({style_class: 'cu-spark'});
 
         this.add_child(head);
         this.add_child(track);
         this.add_child(this._reset);
+        this.add_child(this._forecast);
         this.add_child(this._spark);
     }
 
-    update(card, history) {
+    update(card, history, fc) {
         const sev = severityClass(card.severity);
         this._label.text = card.label + (card.active ? '  ●' : '');
         this._pct.text = `${card.percent}%`;
@@ -69,7 +76,15 @@ class UsageCard extends St.BoxLayout {
         const reset = formatResets(card.resetsAt);
         const note = poolNote(card);
         this._reset.text = [reset, note].filter(s => s).join(' · ');
-        const spark = sparkline(history);
+        // Burn-rate projection: amber when the limit runs out before its reset,
+        // quiet grey when the pace outlasts it, hidden when there is no honest
+        // pace to project (idle, too few samples).
+        const fcText = formatForecast(fc);
+        this._forecast.text = fcText;
+        this._forecast.visible = fcText.length > 0;
+        this._forecast.style_class =
+            `cu-forecast${fc?.exhaustsBeforeReset ? ' cu-warning' : ''}`;
+        const spark = sparkline(historyPercents(history).slice(-12));
         this._spark.text = spark;
         this._spark.visible = spark.length > 0;
     }
@@ -88,8 +103,10 @@ class ClaudeUsageButton extends PanelMenu.Button {
         this._lastCost = null;
         this._refreshing = false;
         this._destroyed = false;
-        this._history = this._loadHistory();  // limit id -> [percent, …] (max 12)
+        this._history = this._loadHistory();  // limit id -> [[epochMs, percent], …]
         this._alertFired = new Map();  // limit id -> highest threshold already alerted
+        this._paceAlerted = new Set();  // limit ids already warned about projected exhaustion
+        this._forecasts = new Map();   // limit id -> latest forecast (or null)
 
         // Panel button: brand glyph + compact worst-limit readout.
         const box = new St.BoxLayout({style_class: 'cu-panel'});
@@ -341,6 +358,22 @@ class ClaudeUsageButton extends PanelMenu.Button {
             } else if (threshold < prev && card.percent < 85) {
                 this._alertFired.set(card.key, threshold); // re-arm for the next cycle
             }
+
+            // Predictive: warn ONCE per window when the pace first projects the
+            // limit running dry at least 1 h before its reset. Re-arm only once
+            // the projection clears by a 2 h margin (or goes away), so a pace
+            // hovering at the edge can't ping-pong notifications.
+            const fc = this._forecasts.get(card.key);
+            if (fc?.exhaustsBeforeReset && fc.marginHours <= -1) {
+                if (!this._paceAlerted.has(card.key)) {
+                    this._paceAlerted.add(card.key);
+                    Main.notify(_('Claude usage'),
+                        _('%s is on pace to run out before it resets').format(card.label) +
+                        ` — ${formatForecast(fc)}`);
+                }
+            } else if (!fc || (!fc.exhaustsBeforeReset && (fc.marginHours ?? 99) >= 2)) {
+                this._paceAlerted.delete(card.key);
+            }
         }
     }
 
@@ -353,10 +386,13 @@ class ClaudeUsageButton extends PanelMenu.Button {
     }
 
     _loadHistory() {
+        // Entries are [epochMs, percent] pairs; history written by versions that
+        // stored bare percents migrates via normalizeHistory (sparkline keeps
+        // working, the forecast simply ignores the timestampless entries).
         try {
             const obj = JSON.parse(this._settings.get_string('history'));
             return new Map(Object.entries(obj)
-                .map(([k, v]) => [k, Array.isArray(v) ? v.slice(-12) : []]));
+                .map(([k, v]) => [k, normalizeHistory(v).slice(-HISTORY_MAX)]));
         } catch {
             return new Map();
         }
@@ -372,18 +408,20 @@ class ClaudeUsageButton extends PanelMenu.Button {
     }
 
     _renderCards(cards) {
-        this._checkAlerts(cards);
+        const now = Date.now();
         const seen = new Set();
         for (const card of cards) {
             seen.add(card.key);
-            // append to per-limit history (kept for the sparkline)
+            // append a timestamped sample (sparkline + burn-rate forecast)
             const hist = this._history.get(card.key) ?? [];
-            hist.push(card.percent);
-            if (hist.length > 12)
+            hist.push([now, card.percent]);
+            if (hist.length > HISTORY_MAX)
                 hist.shift();
             this._history.set(card.key, hist);
+            this._forecasts.set(card.key, forecast(hist, card.resetsAt, now));
         }
         this._saveHistory();
+        this._checkAlerts(cards);
         for (const card of cards) {
             const hist = this._history.get(card.key) ?? [];
 
@@ -393,7 +431,7 @@ class ClaudeUsageButton extends PanelMenu.Button {
                 this._cards.set(card.key, widget);
                 this._cardsBox.add_child(widget);
             }
-            widget.update(card, hist);
+            widget.update(card, hist, this._forecasts.get(card.key));
         }
         // Drop cards that disappeared.
         for (const [key, widget] of this._cards) {
@@ -418,7 +456,11 @@ class ClaudeUsageButton extends PanelMenu.Button {
 
         const shortLabel = card.label.split('·').pop().trim();
         this._panelLabel.text = `${shortLabel} ${card.percent}%`;
-        const sev = severityClass(card.severity);
+        // Predictive tint: a limit reading normal but on pace to run out before
+        // its reset shows amber in the top bar — trouble at 50%, not at 90%.
+        let sev = severityClass(card.severity);
+        if (sev === 'cu-normal' && this._forecasts.get(card.key)?.exhaustsBeforeReset)
+            sev = 'cu-warning';
         this._panelLabel.style_class = `cu-panel-label ${sev}`;
         this._panelIcon.style_class = `cu-panel-icon ${sev}`;
     }

@@ -61,8 +61,13 @@ final class UsageModel: ObservableObject {
     }
     @Published var cursorSummary: CursorSummary?
     @Published var cursorError: String?
-    @Published private(set) var history: [String: [Int]] = [:]
+    /// Per-limit [epochMs, percent] samples — sparkline + burn-rate forecast.
+    @Published private(set) var history: [String: [[Double]]] = [:]
+    @Published private(set) var forecasts: [String: Forecast] = [:]
     private var alertFired: [String: Int] = [:]
+    private var paceAlerted: Set<String> = []
+    /// Enough for the forecast's 6 h window; ~15 h at the 10-minute default.
+    private static let historyMax = 90
 
     private var loopTask: Task<Void, Never>?
 
@@ -72,7 +77,15 @@ final class UsageModel: ObservableObject {
         alertsEnabled = UserDefaults.standard.object(forKey: "alertsEnabled") as? Bool ?? true
         cursorEnabled = UserDefaults.standard.bool(forKey: "cursorEnabled")
         cursorApiKey = UserDefaults.standard.string(forKey: "cursorApiKey") ?? ""
-        history = (UserDefaults.standard.dictionary(forKey: "history") as? [String: [Int]]) ?? [:]
+        // Pair-form [epochMs, percent] history; bare-percent entries written by
+        // older versions migrate as [0, p] — sparkline keeps working, the
+        // forecast simply ignores the timestampless samples.
+        let stored = UserDefaults.standard.dictionary(forKey: "history") ?? [:]
+        history = stored.mapValues { v in
+            if let pairs = v as? [[Double]] { return pairs }
+            if let bare = v as? [Int] { return bare.map { [0, Double($0)] } }
+            return []
+        }
         launchAtLogin = LoginItem.isEnabled
 
         // First launch: register the login item by default, matching the GNOME
@@ -143,11 +156,17 @@ final class UsageModel: ObservableObject {
     }
 
     private func recordHistory(_ cards: [LimitCard]) {
+        let now = Date().timeIntervalSince1970 * 1000
         for c in cards {
             var h = history[c.id] ?? []
-            h.append(c.percent)
-            if h.count > 12 { h.removeFirst(h.count - 12) }
+            h.append([now, Double(c.percent)])
+            if h.count > Self.historyMax { h.removeFirst(h.count - Self.historyMax) }
             history[c.id] = h
+            let samples = h.compactMap { p -> (t: Double, p: Double)? in
+                p.count == 2 ? (t: p[0], p: p[1]) : nil
+            }
+            forecasts[c.id] = UsageForecast.forecast(
+                samples: samples, resetsAt: c.resetsAt, nowMs: now)
         }
         UserDefaults.standard.set(history, forKey: "history")  // survive restarts
     }
@@ -164,6 +183,25 @@ final class UsageModel: ObservableObject {
             } else if threshold < prev && c.percent < 85 {
                 alertFired[c.id] = threshold
             }
+
+            // Predictive: warn ONCE per window when the pace first projects the
+            // limit running dry at least 1 h before its reset; re-arm only when
+            // the projection clears by 2 h (or goes away) so an edge-hovering
+            // pace can't ping-pong notifications.
+            if let fc = forecasts[c.id], fc.exhaustsBeforeReset, (fc.marginHours ?? 0) <= -1 {
+                if !paceAlerted.contains(c.id) {
+                    paceAlerted.insert(c.id)
+                    notify(
+                        "Claude usage",
+                        "\(c.label) is on pace to run out before it resets — "
+                            + UsageForecast.format(forecasts[c.id]))
+                }
+            } else if forecasts[c.id] == nil
+                || (!forecasts[c.id]!.exhaustsBeforeReset
+                    && (forecasts[c.id]!.marginHours ?? 99) >= 2)
+            {
+                paceAlerted.remove(c.id)
+            }
         }
     }
 
@@ -178,10 +216,10 @@ final class UsageModel: ObservableObject {
     }
 
     func spark(for id: String) -> String {
-        let h = history[id] ?? []
+        let h = (history[id] ?? []).suffix(12).compactMap { $0.count == 2 ? $0[1] : nil }
         guard h.count >= 2 else { return "" }
         let blocks = Array(" ▁▂▃▄▅▆▇█")
-        return String(h.map { blocks[max(0, min(8, Int((Double($0) / 100 * 8).rounded())))] })
+        return String(h.map { blocks[max(0, min(8, Int(($0 / 100 * 8).rounded())))] })
     }
 
     /// Severity dot for the menu-bar title (renders in color as an emoji).
@@ -193,7 +231,9 @@ final class UsageModel: ObservableObject {
         }
     }
 
-    /// Worst (highest %) limit, for the menu-bar title.
+    /// Worst (highest %) limit, for the menu-bar title. A limit reading normal
+    /// but on pace to run out before its reset shows the warning dot —
+    /// trouble at 50%, not at 90%.
     var titleText: String {
         guard let worst = cards.max(by: { $0.percent < $1.percent }) else {
             return errorText == nil ? "⚪️ …" : "⚪️ ?"
@@ -201,7 +241,11 @@ final class UsageModel: ObservableObject {
         let short =
             worst.label.components(separatedBy: "·").last?.trimmingCharacters(in: .whitespaces)
             ?? worst.label
-        return "\(dot(worst.severity)) \(short) \(worst.percent)%"
+        var sev = worst.severity
+        if sev == .normal, forecasts[worst.id]?.exhaustsBeforeReset == true {
+            sev = .warning
+        }
+        return "\(dot(sev)) \(short) \(worst.percent)%"
     }
 
     static func compact(_ n: Int) -> String {
@@ -251,6 +295,7 @@ private struct ProgressBar: View {
 private struct CardView: View {
     let card: LimitCard
     let spark: String
+    let forecast: Forecast?
     var body: some View {
         let color = Color.severity(card.severity)
         VStack(alignment: .leading, spacing: 6) {
@@ -277,6 +322,12 @@ private struct CardView: View {
                     Text(spark).font(.system(size: 11, design: .monospaced))
                         .foregroundColor(.secondary)
                 }
+            }
+            // Burn-rate projection: amber when the limit runs out before its
+            // reset, quiet when the pace outlasts it, absent when idle.
+            if let fc = forecast {
+                Text(UsageForecast.format(fc)).font(.system(size: 11))
+                    .foregroundColor(fc.exhaustsBeforeReset ? .cuWarning : .secondary)
             }
         }
         .padding(12)
@@ -306,7 +357,11 @@ struct PopupView: View {
                 Text(err).font(.system(size: 12)).foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
-                ForEach(model.cards) { CardView(card: $0, spark: model.spark(for: $0.id)) }
+                ForEach(model.cards) {
+                    CardView(
+                        card: $0, spark: model.spark(for: $0.id),
+                        forecast: model.forecasts[$0.id])
+                }
             }
 
             if let cost = model.costText {

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
     clampPercent, severityClass, normalizeUsage, sparkline,
     formatResets, alertThreshold, poolNote,
+    forecast, formatForecast, normalizeHistory, historyPercents,
     summarizeCursorSpend, summarizeCursorToday,
 } from '../claude-usage-panel@fschmutz.github.io/lib/pure.js';
 
@@ -140,4 +141,44 @@ test('summarizeCursorSpend with a monthly limit → % gauge', () => {
 test('summarizeCursorToday sums chargedCents', () => {
     assert.equal(summarizeCursorToday([{chargedCents: 150}, {chargedCents: 89}]), 2.39);
     assert.equal(summarizeCursorToday([]), 0);
+});
+
+test('formatForecast renders the alarming and calm shapes', () => {
+    // Fixed instants; formatForecast prints LOCAL weekday+time, so assert shape
+    // rather than an exact clock reading.
+    const bad = formatForecast({
+        pctPerHour: 1.8,
+        projectedFullAt: '2026-08-02T03:40:00.000Z',
+        exhaustsBeforeReset: true,
+        marginHours: -34.3,
+    });
+    assert.match(bad, /^↗ 1\.8%\/h — full ~(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \d{2}:\d{2}, 1d10h before reset$/);
+    const fine = formatForecast({
+        pctPerHour: 0.6,
+        projectedFullAt: '2026-08-09T00:00:00.000Z',
+        exhaustsBeforeReset: false,
+        marginHours: 12,
+    });
+    assert.equal(fine, '↗ 0.6%/h — lasts past reset');
+    const noReset = formatForecast({
+        pctPerHour: 4,
+        projectedFullAt: '2026-08-02T00:00:00.000Z',
+        exhaustsBeforeReset: false,
+        marginHours: null,
+    });
+    assert.equal(noReset, '↗ 4%/h');
+    assert.equal(formatForecast(null), '');
+});
+
+test('normalizeHistory migrates bare percents to [0, p] pairs', () => {
+    assert.deepEqual(normalizeHistory([40, 50]), [[0, 40], [0, 50]]);
+    assert.deepEqual(normalizeHistory([[1000, 42.4], [2000, 44]]), [[1000, 42], [2000, 44]]);
+    assert.deepEqual(normalizeHistory('junk'), []);
+    // Bare-percent entries have no timestamp, so forecast ignores them entirely.
+    assert.equal(forecast(normalizeHistory([40, 44, 48, 52]), null, 1800000000000), null);
+});
+
+test('historyPercents projects pairs back to the sparkline series', () => {
+    assert.deepEqual(historyPercents([[1, 40], [2, 50]]), [40, 50]);
+    assert.deepEqual(historyPercents(undefined), []);
 });

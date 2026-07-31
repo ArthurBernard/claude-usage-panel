@@ -193,13 +193,20 @@ test('tools/list — exposes get_usage with schemas', async () => {
     assert.equal(tool.annotations.readOnlyHint, true);
 });
 
+// tools/call records pace samples — always point it at a throwaway history
+// file so tests never pollute the real shared tmp history.
+const rnd = () => Math.random().toString(36).slice(2);
+const paceTmp = () => ({historyPath: path.join(os.tmpdir(), `cu-mcp-hist-${rnd()}.json`)});
+
 test('tools/call get_usage — text + structuredContent', async () => {
     const r = await handleRequest(
         {method: 'tools/call', params: {name: 'get_usage'}},
-        {fetchImpl: okFetch(LIMITS_PAYLOAD), token: 't'});
+        {fetchImpl: okFetch(LIMITS_PAYLOAD), token: 't', paceOpts: paceTmp()});
     assert.equal(r.isError, undefined);
     assert.match(r.content[0].text, /Current session.*26%/);
     assert.equal(r.structuredContent.limits.length, 2);
+    // One fresh sample can't support a projection — no pace fields yet.
+    assert.equal(r.structuredContent.limits.some(l => l.pace), false);
 });
 
 test('tools/call get_usage — failure is a tool error, not a crash', async () => {
@@ -273,4 +280,48 @@ test('stdio — pending tools/call still answers after stdin EOF', async () => {
     assert.equal(lines[0].id, 1);
     assert.equal(lines[0].result.isError, true);
     assert.match(lines[0].result.content[0].text, /no_token/);
+});
+
+// ── Pace projection on tools/call ───────────────────────────────────────────────
+import {withPace, recordHistory, forecast} from '../mcp/server.js';
+
+test('withPace attaches pace once history supports a projection', () => {
+    const NOW = 1800000000000;
+    const opts = paceTmp();
+    const card = {
+        key: 'weekly_all', label: 'Weekly · all models', group: 'weekly', scoped: false,
+        percent: 52, severity: 'normal',
+        resetsAt: new Date(NOW + 20 * 3600_000).toISOString(), active: true,
+    };
+    // Seed 6 earlier samples 30 min apart (the call itself appends the 7th).
+    for (let i = 0; i < 6; i++) {
+        recordHistory([{...card, percent: 40 + 2 * i}],
+            {nowMs: NOW - (6 - i) * 1800_000, historyPath: opts.historyPath});
+    }
+    const [out] = withPace([card], {nowMs: NOW, ...opts});
+    assert.equal(out.pace.pctPerHour, 4);
+    assert.equal(out.pace.exhaustsBeforeReset, true);
+    assert.equal(out.pace.marginHours, -8);
+    assert.equal(out.pace.projectedFullAt, new Date(NOW + 12 * 3600_000).toISOString());
+});
+
+test('withPace stays silent without enough history', () => {
+    const opts = paceTmp();
+    const card = {
+        key: 'session', label: 'Current session', group: 'session', scoped: false,
+        percent: 10, severity: 'normal', resetsAt: null, active: true,
+    };
+    const [out] = withPace([card], opts);
+    assert.equal(out.pace, undefined);
+    assert.equal(forecast([], null, 0), null);
+});
+
+test('renderCards mentions an alarming pace', () => {
+    const line = renderCards([{
+        label: 'Weekly · all models', group: 'weekly', scoped: false, percent: 52,
+        severity: 'normal', resetsAt: '2026-08-04T06:00:00Z',
+        pace: {pctPerHour: 4, projectedFullAt: '2026-08-02T08:00:00.000Z',
+            exhaustsBeforeReset: true, marginHours: -8},
+    }], Date.parse('2026-08-01T12:00:00Z'));
+    assert.match(line, /↗ 4%\/h — ON PACE TO RUN OUT 8h before reset/);
 });

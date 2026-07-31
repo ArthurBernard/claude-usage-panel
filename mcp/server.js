@@ -116,6 +116,98 @@ export function poolNote(card) {
   return card?.scoped && card.group === 'weekly' ? 'share of the weekly all-models limit' : '';
 }
 
+// ── Burn-rate forecast (mirrors lib/pure.js; tests/fixtures/forecast.json) ──────
+
+const FORECAST_WINDOW_MS = 6 * 3600_000;
+const FORECAST_MIN_SAMPLES = 3;
+const FORECAST_MIN_SPAN_MS = 30 * 60_000;
+const FORECAST_MIN_PACE = 0.2;
+
+// Timestamped percent samples per limit, SHARED with the status line (both
+// write the same tmp file, best-effort) so each invocation densifies the
+// other's history.
+const HISTORY_PATH = path.join(os.tmpdir(), 'claude-usage-history.json');
+
+// Project when a limit hits 100% at the current pace — see pure.js for the
+// full contract; the three JS copies + Swift are pinned by one fixture.
+export function forecast(samples, resetsAt, nowMs) {
+  if (!Array.isArray(samples) || !samples.length) return null;
+  let start = 0;
+  for (let i = samples.length - 1; i > 0; i--) {
+    if (samples[i - 1][1] > samples[i][1] + 1) {
+      start = i;
+      break;
+    }
+  }
+  const win = samples
+    .slice(start)
+    .filter(([t]) => Number.isFinite(t) && t > nowMs - FORECAST_WINDOW_MS && t <= nowMs);
+  if (win.length < FORECAST_MIN_SAMPLES) return null;
+  const [t0] = win[0];
+  const [tLast, pLast] = win[win.length - 1];
+  if (tLast - t0 < FORECAST_MIN_SPAN_MS || pLast >= 100) return null;
+  let sw = 0, swt = 0, swp = 0, swtt = 0, swtp = 0;
+  win.forEach(([t, p], i) => {
+    const w = i + 1;
+    const th = (t - t0) / 3600_000;
+    sw += w;
+    swt += w * th;
+    swp += w * p;
+    swtt += w * th * th;
+    swtp += w * th * p;
+  });
+  const denom = sw * swtt - swt * swt;
+  if (denom === 0) return null;
+  const slope = (sw * swtp - swt * swp) / denom;
+  if (!Number.isFinite(slope) || slope < FORECAST_MIN_PACE) return null;
+  const fullMs = tLast + ((100 - pLast) / slope) * 3600_000;
+  const projected = Math.round(fullMs / 60_000) * 60_000;
+  const resetMs = resetsAt ? Date.parse(resetsAt) : NaN;
+  const margin = Number.isFinite(resetMs)
+    ? Math.round(((projected - resetMs) / 3600_000) * 10) / 10
+    : null;
+  return {
+    pctPerHour: Math.round(slope * 100) / 100,
+    projectedFullAt: new Date(projected).toISOString(),
+    exhaustsBeforeReset: margin !== null && margin < 0,
+    marginHours: margin,
+  };
+}
+
+// Append this call's samples to the shared history and return the updated map.
+// Keyed by the card key (so scoped limits like weekly_scoped:Fable track too).
+export function recordHistory(cards, {nowMs = Date.now(), historyPath = HISTORY_PATH} = {}) {
+  let hist = {};
+  try {
+    const parsed = JSON.parse(fs.readFileSync(historyPath, 'utf8'));
+    if (parsed && typeof parsed === 'object') hist = parsed;
+  } catch {
+    // no history yet
+  }
+  for (const c of cards) {
+    const list = Array.isArray(hist[c.key]) ? hist[c.key] : [];
+    list.push([nowMs, c.percent]);
+    hist[c.key] = list.slice(-200);
+  }
+  try {
+    fs.writeFileSync(historyPath, JSON.stringify(hist), {mode: 0o600});
+  } catch {
+    // read-only tmp dir just means no pace fields; not fatal
+  }
+  return hist;
+}
+
+// Attach a `pace` object to every card whose history supports an honest
+// projection. Pooled limits share their key ("session" / "weekly_all") with the
+// status line's records, so either client's samples feed the other's forecast.
+export function withPace(cards, {nowMs = Date.now(), historyPath = HISTORY_PATH} = {}) {
+  const hist = recordHistory(cards, {nowMs, historyPath});
+  return cards.map((c) => {
+    const fc = forecast(hist[c.key] ?? [], c.resetsAt, nowMs);
+    return fc ? {...c, pace: fc} : c;
+  });
+}
+
 // "resets in 3h06m" / "4d2h" — the two most significant units, like the
 // status line's resetHint.
 export function resetHint(resetsAt, now = Date.now()) {
@@ -211,7 +303,9 @@ export async function fetchUsage({fetchImpl = fetch, token = readAccessToken()} 
   }
 }
 
-// One markdown line per limit: label, percent, severity, reset countdown.
+// One markdown line per limit: label, percent, severity, reset countdown, and —
+// when history supports a projection — the burn rate and whether it runs out
+// before the reset.
 export function renderCards(cards, now = Date.now()) {
   if (!cards.length) return 'No plan limits reported by the usage endpoint.';
   return cards.map(c => {
@@ -221,6 +315,11 @@ export function renderCards(cards, now = Date.now()) {
     if (reset) parts.push(`resets in ${reset}`);
     const note = poolNote(c);
     if (note) parts.push(note);
+    if (c.pace) {
+      parts.push(c.pace.exhaustsBeforeReset
+        ? `↗ ${c.pace.pctPerHour}%/h — ON PACE TO RUN OUT ${Math.abs(c.pace.marginHours)}h before reset (~${c.pace.projectedFullAt})`
+        : `↗ ${c.pace.pctPerHour}%/h — lasts past reset`);
+    }
     return `- ${parts.join(' · ')}`;
   }).join('\n');
 }
@@ -235,7 +334,9 @@ const GET_USAGE_TOOL = {
     'percent used, severity, and reset time for each, from the official ' +
     'Anthropic usage endpoint (same numbers as /usage). A per-model limit ' +
     '(scoped:true, e.g. Fable) caps a share of the weekly all-models pool and ' +
-    'draws from it — it is not extra quota.',
+    'draws from it — it is not extra quota. When enough local history exists, ' +
+    'each limit also carries a `pace` projection: %/hour burn rate, the ' +
+    'projected 100% instant, and whether that lands before the reset.',
   inputSchema: {type: 'object', properties: {}, additionalProperties: false},
   outputSchema: {
     type: 'object',
@@ -256,6 +357,25 @@ const GET_USAGE_TOOL = {
             severity: {type: 'string', enum: ['normal', 'warning', 'critical']},
             resetsAt: {type: ['string', 'null']},
             active: {type: 'boolean'},
+            pace: {
+              type: 'object',
+              description:
+                'burn-rate projection from local sample history; absent when ' +
+                'idle or too little history',
+              properties: {
+                pctPerHour: {type: 'number'},
+                projectedFullAt: {type: 'string', description: 'instant the limit hits 100%'},
+                exhaustsBeforeReset: {
+                  type: 'boolean',
+                  description: 'true when projected to run out BEFORE the reset',
+                },
+                marginHours: {
+                  type: ['number', 'null'],
+                  description: 'projectedFullAt − reset in hours; negative = runs out early',
+                },
+              },
+              required: ['pctPerHour', 'projectedFullAt', 'exhaustsBeforeReset'],
+            },
           },
           required: ['key', 'label', 'group', 'scoped', 'percent', 'severity'],
         },
@@ -288,9 +408,10 @@ export async function handleRequest(msg, deps = {}) {
       const result = await fetchUsage(deps);
       if (!result.ok)
         return {content: [{type: 'text', text: `${result.code}: ${result.message}`}], isError: true};
+      const cards = withPace(result.cards, deps.paceOpts);
       return {
-        content: [{type: 'text', text: renderCards(result.cards)}],
-        structuredContent: {limits: result.cards},
+        content: [{type: 'text', text: renderCards(cards)}],
+        structuredContent: {limits: cards},
       };
     }
     default:

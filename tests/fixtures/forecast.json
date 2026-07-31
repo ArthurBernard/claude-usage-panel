@@ -1,0 +1,276 @@
+{
+  "now": 1800000000000,
+  "cases": [
+    {
+      "name": "steady 4%/h climb exhausts 8h before a +20h reset",
+      "samples": [
+        [
+          1799989200000,
+          40
+        ],
+        [
+          1799991000000,
+          42
+        ],
+        [
+          1799992800000,
+          44
+        ],
+        [
+          1799994600000,
+          46
+        ],
+        [
+          1799996400000,
+          48
+        ],
+        [
+          1799998200000,
+          50
+        ],
+        [
+          1800000000000,
+          52
+        ]
+      ],
+      "resetsAt": "2027-01-16T04:00:00.000Z",
+      "expected": {
+        "pctPerHour": 4,
+        "projectedFullAt": "2027-01-15T20:00:00.000Z",
+        "exhaustsBeforeReset": true,
+        "marginHours": -8
+      }
+    },
+    {
+      "name": "slow 1%/h pace outlasts a +50h reset",
+      "samples": [
+        [
+          1799978400000,
+          40
+        ],
+        [
+          1799982000000,
+          41
+        ],
+        [
+          1799985600000,
+          42
+        ],
+        [
+          1799989200000,
+          43
+        ],
+        [
+          1799992800000,
+          44
+        ],
+        [
+          1799996400000,
+          45
+        ],
+        [
+          1800000000000,
+          46
+        ]
+      ],
+      "resetsAt": "2027-01-17T10:00:00.000Z",
+      "expected": {
+        "pctPerHour": 1,
+        "projectedFullAt": "2027-01-17T14:00:00.000Z",
+        "exhaustsBeforeReset": false,
+        "marginHours": 4
+      }
+    },
+    {
+      "name": "reset boundary mid-history is pruned before regressing",
+      "samples": [
+        [
+          1799989200000,
+          90
+        ],
+        [
+          1799991000000,
+          95
+        ],
+        [
+          1799992800000,
+          4
+        ],
+        [
+          1799994600000,
+          6
+        ],
+        [
+          1799996400000,
+          8
+        ],
+        [
+          1799998200000,
+          10
+        ],
+        [
+          1800000000000,
+          12
+        ]
+      ],
+      "resetsAt": "2027-01-16T14:00:00.000Z",
+      "expected": {
+        "pctPerHour": 4,
+        "projectedFullAt": "2027-01-16T06:00:00.000Z",
+        "exhaustsBeforeReset": true,
+        "marginHours": -8
+      }
+    },
+    {
+      "name": "idle (flat) pace yields no forecast",
+      "samples": [
+        [
+          1799992800000,
+          50
+        ],
+        [
+          1799994600000,
+          50
+        ],
+        [
+          1799996400000,
+          50
+        ],
+        [
+          1799998200000,
+          50
+        ],
+        [
+          1800000000000,
+          50
+        ]
+      ],
+      "resetsAt": "2027-01-16T04:00:00.000Z",
+      "expected": null
+    },
+    {
+      "name": "two samples are never extrapolated",
+      "samples": [
+        [
+          1799996400000,
+          40
+        ],
+        [
+          1799998200000,
+          44
+        ]
+      ],
+      "resetsAt": "2027-01-16T04:00:00.000Z",
+      "expected": null
+    },
+    {
+      "name": "a burst narrower than 30min is not a pace",
+      "samples": [
+        [
+          1799998800000,
+          40
+        ],
+        [
+          1799999400000,
+          45
+        ],
+        [
+          1800000000000,
+          50
+        ]
+      ],
+      "resetsAt": "2027-01-16T04:00:00.000Z",
+      "expected": null
+    },
+    {
+      "name": "already at 100% has nothing to project",
+      "samples": [
+        [
+          1799992800000,
+          92
+        ],
+        [
+          1799994600000,
+          94
+        ],
+        [
+          1799996400000,
+          96
+        ],
+        [
+          1799998200000,
+          98
+        ],
+        [
+          1800000000000,
+          100
+        ]
+      ],
+      "resetsAt": "2027-01-16T04:00:00.000Z",
+      "expected": null
+    },
+    {
+      "name": "no reset to compare to still reports the pace",
+      "samples": [
+        [
+          1799989200000,
+          40
+        ],
+        [
+          1799991000000,
+          42
+        ],
+        [
+          1799992800000,
+          44
+        ],
+        [
+          1799994600000,
+          46
+        ],
+        [
+          1799996400000,
+          48
+        ],
+        [
+          1799998200000,
+          50
+        ],
+        [
+          1800000000000,
+          52
+        ]
+      ],
+      "resetsAt": null,
+      "expected": {
+        "pctPerHour": 4,
+        "projectedFullAt": "2027-01-15T20:00:00.000Z",
+        "exhaustsBeforeReset": false,
+        "marginHours": null
+      }
+    },
+    {
+      "name": "samples older than the 6h window are ignored",
+      "samples": [
+        [
+          1799964000000,
+          10
+        ],
+        [
+          1799965800000,
+          12
+        ],
+        [
+          1799996400000,
+          30
+        ],
+        [
+          1799998200000,
+          32
+        ]
+      ],
+      "resetsAt": "2027-01-16T04:00:00.000Z",
+      "expected": null
+    }
+  ]
+}

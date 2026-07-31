@@ -34,6 +34,12 @@ Session, weekly (all models), and **per-model** weekly limits (Fable, Opus…) f
 `api.anthropic.com/api/oauth/usage` endpoint — with severity colors, reset timers, limit-crossing
 alerts, a usage sparkline, and an optional session cost.
 
+Each limit also carries a **burn-rate forecast**: from your recent pace it projects when the
+limit hits 100% and whether that lands *before* the reset — "↗ 4%/h — full ~Sat 21:24, 3d7h
+before reset". The top bar turns amber and a notification fires the moment a limit goes on pace
+to run dry early, so trouble is visible at 50%, not at 90%. The projection stays silent when
+idle or when there's too little history to be honest.
+
 A per-model limit is a **sub-cap of the weekly all-models pool**, not a separate
 allowance: Fable usage counts toward the weekly limit (on Max, up to 50% of it
 may go to Fable) and resets with it. The clients label those cards accordingly

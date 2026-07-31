@@ -40,3 +40,26 @@ for (const {name, input, expected} of cases) {
         assert.deepEqual(normalizeMcp(input).map(core), expected);
     });
 }
+
+// ── Burn-rate forecast parity ───────────────────────────────────────────────────
+// The forecast lives in three JS copies (pure.js, statusline.js, mcp/server.js)
+// plus Swift (ForecastParityTests asserts the same fixture). One fixture pins
+// the numbers: pace, projected-full instant, and the exhausts-before-reset call.
+import {forecast as forecastPure} from '../claude-usage-panel@fschmutz.github.io/lib/pure.js';
+import {forecast as forecastStatusline} from '../claude-code/statusline.js';
+import {forecast as forecastMcp} from '../mcp/server.js';
+
+const forecastFix = JSON.parse(
+    fs.readFileSync(path.join(here, 'fixtures', 'forecast.json'), 'utf8'));
+
+for (const [portName, fn] of [
+    ['pure.js', forecastPure],
+    ['statusline.js', forecastStatusline],
+    ['mcp/server.js', forecastMcp],
+]) {
+    for (const c of forecastFix.cases) {
+        test(`${portName} forecast — ${c.name}`, () => {
+            assert.deepEqual(fn(c.samples, c.resetsAt, forecastFix.now), c.expected);
+        });
+    }
+}

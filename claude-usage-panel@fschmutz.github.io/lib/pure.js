@@ -146,6 +146,116 @@ export function alertThreshold(percent) {
     return percent >= 100 ? 100 : (percent >= 90 ? 90 : 0);
 }
 
+// ── Burn-rate forecast ──────────────────────────────────────────────────────────
+// From timestamped percent samples, project when a limit hits 100% at the
+// current pace and whether that lands before its reset. Part of the shared
+// cross-port contract (Model.swift / statusline.js / mcp/server.js mirror it;
+// tests/fixtures/forecast.json pins the numbers).
+
+const FORECAST_WINDOW_MS = 6 * 3600_000; // regress over the last 6 h only
+const FORECAST_MIN_SAMPLES = 3;          // never extrapolate from 2 points
+const FORECAST_MIN_SPAN_MS = 30 * 60_000; // …or from a burst narrower than 30 min
+const FORECAST_MIN_PACE = 0.2;           // %/h below this is idle → no forecast
+
+/**
+ * @param {Array<[number, number]>} samples chronological [epochMs, percent]
+ * @param {?string} resetsAt ISO reset time of the limit (null → no comparison)
+ * @param {number} nowMs injectable clock
+ * @returns {?{pctPerHour: number, projectedFullAt: string,
+ *            exhaustsBeforeReset: boolean, marginHours: ?number}}
+ *   pctPerHour is rounded to 2 decimals; projectedFullAt to the minute;
+ *   marginHours (projectedFullAt − reset, 1 decimal) is negative when the limit
+ *   runs out BEFORE the reset — that is the alarming case — and null without a
+ *   reset to compare to. Returns null whenever an honest projection isn't
+ *   possible: too few samples, idle pace, already at 100%.
+ */
+export function forecast(samples, resetsAt, nowMs) {
+    if (!Array.isArray(samples) || !samples.length)
+        return null;
+    // A percent DROP means the window reset between samples — everything before
+    // the drop belongs to the previous window and would poison the slope.
+    let start = 0;
+    for (let i = samples.length - 1; i > 0; i--) {
+        if (samples[i - 1][1] > samples[i][1] + 1) {
+            start = i;
+            break;
+        }
+    }
+    const win = samples.slice(start)
+        .filter(([t]) => Number.isFinite(t) && t > nowMs - FORECAST_WINDOW_MS && t <= nowMs);
+    if (win.length < FORECAST_MIN_SAMPLES)
+        return null;
+    const [t0] = win[0];
+    const [tLast, pLast] = win[win.length - 1];
+    if (tLast - t0 < FORECAST_MIN_SPAN_MS || pLast >= 100)
+        return null;
+
+    // Weighted least squares (weight = recency rank) so the current pace
+    // dominates but one burst an hour ago doesn't predict doom all day.
+    let sw = 0, swt = 0, swp = 0, swtt = 0, swtp = 0;
+    win.forEach(([t, p], i) => {
+        const w = i + 1;
+        const th = (t - t0) / 3600_000; // hours since window start, keeps numbers small
+        sw += w;
+        swt += w * th;
+        swp += w * p;
+        swtt += w * th * th;
+        swtp += w * th * p;
+    });
+    const denom = sw * swtt - swt * swt;
+    if (denom === 0)
+        return null;
+    const slope = (sw * swtp - swt * swp) / denom; // %/h
+    if (!Number.isFinite(slope) || slope < FORECAST_MIN_PACE)
+        return null;
+
+    const fullMs = tLast + ((100 - pLast) / slope) * 3600_000;
+    const projected = Math.round(fullMs / 60_000) * 60_000; // minute precision
+    const resetMs = resetsAt ? Date.parse(resetsAt) : NaN;
+    const margin = Number.isFinite(resetMs)
+        ? Math.round(((projected - resetMs) / 3600_000) * 10) / 10 : null;
+    return {
+        pctPerHour: Math.round(slope * 100) / 100,
+        projectedFullAt: new Date(projected).toISOString(),
+        exhaustsBeforeReset: margin !== null && margin < 0,
+        marginHours: margin,
+    };
+}
+
+// "↗ 1.8%/h — full ~Sun 03:40, 1d10h before reset" (alarming) or
+// "↗ 0.6%/h — lasts past reset" (fine) or "" (no forecast). Weekday+time are
+// local, matching the reset countdowns next to it.
+export function formatForecast(fc) {
+    if (!fc)
+        return '';
+    const pace = `↗ ${fc.pctPerHour}%/h`;
+    if (!fc.exhaustsBeforeReset)
+        return fc.marginHours === null ? pace : `${pace} — lasts past reset`;
+    const d = new Date(fc.projectedFullAt);
+    const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+    const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const lead = Math.abs(fc.marginHours);
+    const dd = Math.floor(lead / 24);
+    const hh = Math.round(lead % 24);
+    const span = dd > 0 ? `${dd}d${hh}h` : `${hh}h`;
+    return `${pace} — full ~${day} ${hm}, ${span} before reset`;
+}
+
+// History entries are stored as [t, p] pairs; entries written by versions that
+// stored bare percents migrate as [0, p] — still good for the sparkline, and
+// the forecast window (t > now − 6 h) naturally ignores them.
+export function normalizeHistory(list) {
+    if (!Array.isArray(list))
+        return [];
+    return list.map(e => Array.isArray(e) ? [Number(e[0]) || 0, clampPercent(e[1])]
+        : [0, clampPercent(e)]);
+}
+
+// Percent series for the sparkline, from pair-form history.
+export function historyPercents(pairs) {
+    return (pairs ?? []).map(e => e[1]);
+}
+
 // Summarize Cursor /teams/spend rows into cycle spend, limit, %, top, members.
 export function summarizeCursorSpend(rows) {
     let cycleCents = 0;

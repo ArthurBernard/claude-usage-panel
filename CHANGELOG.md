@@ -6,6 +6,25 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **Burn-rate forecast on every limit.** From the timestamped usage history each
+  client already keeps, a weighted regression over the last 6 h projects when a
+  limit hits 100% and whether that lands **before its reset** — surfaced as a
+  sub-line on the GNOME/macOS cards ("↗ 4%/h — full ~Sat 21:24, 3d7h before
+  reset", amber when alarming), a predictive top-bar/menu-bar tint (trouble
+  visible at 50%, not at 90%), a one-shot desktop notification with hysteresis
+  when a limit first goes on pace to run dry ≥1 h early, a compact
+  "⚠full Sat21:24" marker in the status line, and a `pace` object per limit in
+  the MCP `get_usage` output — so you can ask "will I make it to the reset?".
+  The projection is deliberately honest: it needs ≥3 samples spanning ≥30 min,
+  ignores samples older than 6 h or from before a window reset, and stays
+  silent when idle. One implementation contract across all four ports, pinned
+  by `tests/fixtures/forecast.json` (JS ×3 + Swift parity suites).
+  The status line and MCP server share one local sample file
+  (`$TMPDIR/claude-usage-history.json`) so each densifies the other's history —
+  still no credentials, no network.
+
 ## [1.6.0] — 2026-08-01
 
 ### Added

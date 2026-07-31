@@ -18,6 +18,12 @@ endpoint**, and starts instantly. Per-model (Fable) weekly limits are
 desktop-only by design: stdin never exposes them, so they appear in the GNOME
 extension, the macOS app, and the [[MCP Tool]] — never here.
 
+When your recent pace puts a limit on track to run out **before** its reset,
+the gauge grows a compact amber marker — `Week █▌░░ 52% 2d14h ⚠full Sat21:24` —
+and stays silent otherwise, so the line only lengthens when something is worth
+knowing. Samples are recorded to a local tmp file shared with the MCP server
+(`$TMPDIR/claude-usage-history.json`); still no credentials and no network.
+
 ## Install
 
 ```bash

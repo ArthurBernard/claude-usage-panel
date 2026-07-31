@@ -78,8 +78,9 @@ plus terminal and in-conversation projections.
 | | |
 |---|---|
 | 📊 **All plan limits** | Session, weekly, per-model — one card each, severity colors + reset timers from the API |
+| 📈 **Burn-rate forecast** | "↗ 4%/h — full ~Sat 21:24, 3d7h before reset": each limit is projected from your recent pace, the top bar turns amber the moment a limit is *on track* to run dry before its reset, and a notification fires once — trouble visible at 50%, not at 90% |
 | 🧮 **Pool-aware** | A per-model card (Fable) is labelled as a *share of* the weekly all-models limit, not extra quota — because that is what it is |
-| 🔔 **Alerts + sparklines** | Desktop notification at 90% / 100%, tiny trend graph per limit |
+| 🔔 **Alerts + sparklines** | Desktop notification at 90% / 100% and on projected exhaustion, tiny trend graph per limit |
 | 💲 **Optional extras** | Local [`ccusage`](https://github.com/ryoppippi/ccusage) session cost · Cursor team spend via Admin API |
 | 🔒 **Read-only & private** | Uses your existing local token, never writes it, no telemetry, talks only to official APIs |
 

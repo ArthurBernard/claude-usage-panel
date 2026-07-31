@@ -105,6 +105,18 @@ The normalization contract (must stay identical across ports):
 - `clampPercent` → 0..100 int; `severity` comes straight from the API
   (normal/warning/critical) and also drives the top-bar glyph color.
 - `alertThreshold` buckets to 0/90/100 for limit-crossing notifications.
+- `forecast(samples, resetsAt, now)` — burn-rate projection from timestamped
+  [epochMs, percent] samples: weighted regression over the last 6 h, pruned at
+  window resets, silent unless ≥3 samples span ≥30 min and pace ≥0.2%/h.
+  Returns {pctPerHour, projectedFullAt, exhaustsBeforeReset, marginHours};
+  `tests/fixtures/forecast.json` pins all four ports (values chosen away from
+  rounding boundaries so double math agrees across JS and Swift — keep new
+  cases that way). Drives the card sub-line, the predictive top-bar tint, a
+  once-per-window exhaustion alert (fires at margin ≤ −1 h, re-arms at ≥ +2 h),
+  the status line's "⚠full …" marker, and the MCP `pace` field. The status
+  line + MCP share `$TMPDIR/claude-usage-history.json`; GNOME/macOS persist
+  pair-form history in GSettings/UserDefaults (bare-percent entries from old
+  versions migrate as [0, p] and are ignored by the forecast).
 
 ### Platform layer (thin, wraps the pure core)
 

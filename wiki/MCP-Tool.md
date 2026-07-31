@@ -43,9 +43,17 @@ One entry per active limit, as text plus structured content:
 ```json
 {"limits": [
   {"key": "session", "label": "Current session", "percent": 26,
-   "severity": "normal", "resetsAt": "2026-07-19T16:00:00Z", "active": true}
+   "severity": "normal", "resetsAt": "2026-07-19T16:00:00Z", "active": true,
+   "pace": {"pctPerHour": 4, "projectedFullAt": "2026-07-19T15:00:00Z",
+            "exhaustsBeforeReset": true, "marginHours": -1}}
 ]}
 ```
+
+`pace` appears once enough local history exists (the server records a sample on
+every call, sharing a tmp file with the status line): the %/hour burn rate, the
+projected 100% instant, and whether that lands before the reset — so you can
+ask *"at this pace, will I make it to the weekly reset?"* and get a grounded
+answer. Absent when idle or on the first calls.
 
 Errors (no token, expired session, network) come back as tool errors with a
 one-line fix hint — e.g. *"Claude session expired. Run any Claude Code command

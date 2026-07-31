@@ -143,3 +143,78 @@ final class CursorMathTests: XCTestCase {
         XCTAssertEqual(CursorMath.summarizeToday([]), 0)
     }
 }
+
+/// Forecast parity: the burn-rate projection against the same fixture the three
+/// JS copies assert (tests/parity.test.js). Numbers must match exactly — the
+/// fixture is designed away from rounding boundaries so double math agrees
+/// across languages.
+final class ForecastParityTests: XCTestCase {
+    func testMatchesSharedFixtures() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let url = root.appendingPathComponent("tests/fixtures/forecast.json")
+        let obj = try JSONSerialization.jsonObject(with: Data(contentsOf: url))
+        let fix = obj as! [String: Any]
+        let now = (fix["now"] as! NSNumber).doubleValue
+        let cases = fix["cases"] as! [[String: Any]]
+
+        for c in cases {
+            let name = c["name"] as? String ?? "?"
+            let samples = (c["samples"] as! [[NSNumber]]).map {
+                (t: $0[0].doubleValue, p: $0[1].doubleValue)
+            }
+            let resetsAt = UsageNormalizer.parseDate(c["resetsAt"] as? String)
+            let got = UsageForecast.forecast(samples: samples, resetsAt: resetsAt, nowMs: now)
+
+            guard let e = c["expected"] as? [String: Any] else {
+                XCTAssertNil(got, "expected nil — \(name)")
+                continue
+            }
+            let fc = try XCTUnwrap(got, "expected a forecast — \(name)")
+            XCTAssertEqual(
+                fc.pctPerHour, (e["pctPerHour"] as! NSNumber).doubleValue,
+                accuracy: 0.001, "pace — \(name)")
+            XCTAssertEqual(
+                fc.projectedFullAt,
+                UsageNormalizer.parseDate(e["projectedFullAt"] as? String),
+                "projectedFullAt — \(name)")
+            XCTAssertEqual(
+                fc.exhaustsBeforeReset, e["exhaustsBeforeReset"] as? Bool,
+                "exhausts — \(name)")
+            if let m = e["marginHours"] as? NSNumber {
+                XCTAssertEqual(
+                    try XCTUnwrap(fc.marginHours), m.doubleValue,
+                    accuracy: 0.001, "margin — \(name)")
+            } else {
+                XCTAssertNil(fc.marginHours, "margin nil — \(name)")
+            }
+        }
+    }
+
+    func testFormat() {
+        let fc = Forecast(
+            pctPerHour: 1.8,
+            projectedFullAt: UsageNormalizer.parseDate("2026-08-02T03:40:00Z")!,
+            exhaustsBeforeReset: true, marginHours: -34.3)
+        // Weekday/time render in the local zone; assert the shape.
+        let s = UsageForecast.format(fc)
+        XCTAssertTrue(s.hasPrefix("↗ 1.8%/h — full ~"), s)
+        XCTAssertTrue(s.hasSuffix(", 1d10h before reset"), s)
+        XCTAssertEqual(
+            UsageForecast.format(
+                Forecast(
+                    pctPerHour: 0.6, projectedFullAt: Date(),
+                    exhaustsBeforeReset: false, marginHours: 12)),
+            "↗ 0.6%/h — lasts past reset")
+        XCTAssertEqual(
+            UsageForecast.format(
+                Forecast(
+                    pctPerHour: 4, projectedFullAt: Date(),
+                    exhaustsBeforeReset: false, marginHours: nil)),
+            "↗ 4%/h")
+        XCTAssertEqual(UsageForecast.format(nil), "")
+    }
+}

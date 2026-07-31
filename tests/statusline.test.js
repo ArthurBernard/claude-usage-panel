@@ -149,3 +149,57 @@ test('parseConfig picks segments/order and token mode, dropping unknowns', () =>
     assert.equal(parseConfig(['--tokens=fresh']).includeCacheRead, false);
     assert.equal(parseConfig(['--tokens=all']).includeCacheRead, true);
 });
+
+// ── Burn-rate forecast + shared history ─────────────────────────────────────────
+import fs from 'node:fs';
+import {forecast, recordHistory, exhaustionMarker} from '../claude-code/statusline.js';
+
+test('recordHistory appends per-kind samples to the shared file and caps them', () => {
+    const p = noCache();
+    const cards = [
+        {kind: 'session', percent: 20},
+        {kind: 'weekly_all', percent: 50},
+    ];
+    let hist = recordHistory(cards, {nowMs: 1000, historyPath: p});
+    hist = recordHistory(cards, {nowMs: 2000, historyPath: p});
+    assert.deepEqual(hist.session, [[1000, 20], [2000, 20]]);
+    assert.deepEqual(hist.weekly_all, [[1000, 50], [2000, 50]]);
+    // Round-trips through the file, and caps at 200 samples per kind.
+    for (let i = 0; i < 250; i++)
+        hist = recordHistory([{kind: 'session', percent: 30}], {nowMs: 3000 + i, historyPath: p});
+    assert.equal(JSON.parse(fs.readFileSync(p, 'utf8')).session.length, 200);
+    fs.rmSync(p, {force: true});
+});
+
+test('recordHistory survives a corrupt or unwritable history file', () => {
+    const p = noCache();
+    fs.writeFileSync(p, 'not json');
+    const hist = recordHistory([{kind: 'session', percent: 10}], {nowMs: 1, historyPath: p});
+    assert.deepEqual(hist.session, [[1, 10]]);
+});
+
+test('exhaustionMarker warns only for the alarming case', () => {
+    assert.equal(exhaustionMarker(null), '');
+    assert.equal(exhaustionMarker({exhaustsBeforeReset: false, marginHours: 4}), '');
+    const m = strip(exhaustionMarker({
+        exhaustsBeforeReset: true,
+        projectedFullAt: '2026-08-02T03:40:00.000Z',
+        marginHours: -8,
+    }));
+    assert.match(m, /^ ⚠full (Sun|Mon|Tue|Wed|Thu|Fri|Sat)\d{2}:\d{2}$/);
+});
+
+test('render appends the marker to the matching limit', () => {
+    const NOW = 1800000000000;
+    const cards = [{
+        kind: 'weekly_all', label: 'Week', percent: 52,
+        severity: 'normal', resetsAt: new Date(NOW + 20 * 3600_000).toISOString(), active: true,
+    }];
+    const samples = Array.from({length: 7}, (_, i) => [NOW - (6 - i) * 1800_000, 40 + 2 * i]);
+    const fc = forecast(samples, cards[0].resetsAt, NOW);
+    assert.equal(fc.exhaustsBeforeReset, true);
+    const line = strip(render(cards, {forecasts: new Map([['weekly_all', fc]])}));
+    assert.match(line, /Week .*52%.*⚠full /);
+    // Without a forecast the line is unchanged.
+    assert.doesNotMatch(strip(render(cards)), /⚠full/);
+});

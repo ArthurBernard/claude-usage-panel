@@ -6,6 +6,15 @@ deliberately duplicated per port and kept behaviorally identical by a shared
 test fixture (`tests/fixtures/normalize.json`) — `tests/parity.test.js` asserts
 the two JS ports, and the Swift `NormalizeParityTests` asserts the same file.
 
+The **burn-rate forecast** is part of the same contract: `forecast(samples,
+resetsAt, now)` regresses the last 6 h of timestamped percent samples (pruned
+at window resets, silent unless ≥3 samples span ≥30 min at ≥0.2%/h) into
+`{pctPerHour, projectedFullAt, exhaustsBeforeReset, marginHours}`. Three JS
+copies + the Swift one are pinned by `tests/fixtures/forecast.json`. The
+status line and MCP server share one sample file
+(`$TMPDIR/claude-usage-history.json`); GNOME and macOS persist their own
+pair-form history in GSettings / UserDefaults.
+
 ```text
 claude-usage-panel@fschmutz.github.io/   # GNOME Shell extension (GJS / ESM)
 ├── extension.js        # panel button, dropdown, alerts, sparkline, Cursor section

@@ -17,6 +17,12 @@ import {fileURLToPath} from 'node:url';
 // re-read and re-parsed on every refresh (see transcriptTotals).
 const TOKENS_CACHE_PATH = path.join(os.tmpdir(), 'claude-usage-statusline-tokens.json');
 
+// Timestamped percent samples per limit, SHARED with the MCP server (both write
+// the same file, best-effort) so each invocation densifies the other's history.
+// Feeds the burn-rate forecast; like the token cache it is a local tmp file —
+// still no credentials and no network.
+const HISTORY_PATH = path.join(os.tmpdir(), 'claude-usage-history.json');
+
 // Short labels for the two rate-limit windows stdin exposes. Terse because the
 // status line has little horizontal room.
 const KIND_LABELS = {session: 'Session', weekly_all: 'Week'};
@@ -116,7 +122,94 @@ export function cardsFromStdin(stdinText) {
   return cards;
 }
 
-export function render(cards) {
+// ── Burn-rate forecast (mirrors lib/pure.js; tests/fixtures/forecast.json) ──────
+
+const FORECAST_WINDOW_MS = 6 * 3600_000;
+const FORECAST_MIN_SAMPLES = 3;
+const FORECAST_MIN_SPAN_MS = 30 * 60_000;
+const FORECAST_MIN_PACE = 0.2;
+
+// Project when a limit hits 100% at the current pace — see pure.js for the
+// full contract; the three JS copies + Swift are pinned by one fixture.
+export function forecast(samples, resetsAt, nowMs) {
+  if (!Array.isArray(samples) || !samples.length) return null;
+  let start = 0;
+  for (let i = samples.length - 1; i > 0; i--) {
+    if (samples[i - 1][1] > samples[i][1] + 1) {
+      start = i;
+      break;
+    }
+  }
+  const win = samples
+    .slice(start)
+    .filter(([t]) => Number.isFinite(t) && t > nowMs - FORECAST_WINDOW_MS && t <= nowMs);
+  if (win.length < FORECAST_MIN_SAMPLES) return null;
+  const [t0] = win[0];
+  const [tLast, pLast] = win[win.length - 1];
+  if (tLast - t0 < FORECAST_MIN_SPAN_MS || pLast >= 100) return null;
+  let sw = 0, swt = 0, swp = 0, swtt = 0, swtp = 0;
+  win.forEach(([t, p], i) => {
+    const w = i + 1;
+    const th = (t - t0) / 3600_000;
+    sw += w;
+    swt += w * th;
+    swp += w * p;
+    swtt += w * th * th;
+    swtp += w * th * p;
+  });
+  const denom = sw * swtt - swt * swt;
+  if (denom === 0) return null;
+  const slope = (sw * swtp - swt * swp) / denom;
+  if (!Number.isFinite(slope) || slope < FORECAST_MIN_PACE) return null;
+  const fullMs = tLast + ((100 - pLast) / slope) * 3600_000;
+  const projected = Math.round(fullMs / 60_000) * 60_000;
+  const resetMs = resetsAt ? Date.parse(resetsAt) : NaN;
+  const margin = Number.isFinite(resetMs)
+    ? Math.round(((projected - resetMs) / 3600_000) * 10) / 10
+    : null;
+  return {
+    pctPerHour: Math.round(slope * 100) / 100,
+    projectedFullAt: new Date(projected).toISOString(),
+    exhaustsBeforeReset: margin !== null && margin < 0,
+    marginHours: margin,
+  };
+}
+
+// Append this invocation's samples to the shared history file and return the
+// updated {kind: [[t, p], …]} map. Best-effort on a tmp file: a concurrent MCP
+// write may win a race — worst case one sample is lost, never an error.
+export function recordHistory(cards, {nowMs = Date.now(), historyPath = HISTORY_PATH} = {}) {
+  let hist = {};
+  try {
+    const parsed = JSON.parse(fs.readFileSync(historyPath, 'utf8'));
+    if (parsed && typeof parsed === 'object') hist = parsed;
+  } catch {
+    // no history yet
+  }
+  for (const c of cards) {
+    const list = Array.isArray(hist[c.kind]) ? hist[c.kind] : [];
+    list.push([nowMs, c.percent]);
+    hist[c.kind] = list.slice(-200);
+  }
+  try {
+    fs.writeFileSync(historyPath, JSON.stringify(hist), {mode: 0o600});
+  } catch {
+    // read-only tmp dir just means no forecast; not fatal
+  }
+  return hist;
+}
+
+// "⚠full Sun03:40" appended to the gauge of the worst limit projected to run
+// out before its reset. Silent in the good case — the line stays short.
+export function exhaustionMarker(fc) {
+  if (!fc?.exhaustsBeforeReset) return '';
+  const d = new Date(fc.projectedFullAt);
+  const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return ` ${SEV_COLOR.warning}⚠full ${day}${hm}${RESET}`;
+}
+
+export function render(cards, {forecasts = new Map()} = {}) {
   const active = cards.filter((c) => c.active || c.percent > 0);
   const shown = active.length ? active : cards;
   if (!shown.length) return '';
@@ -133,7 +226,8 @@ export function render(cards) {
     .map((c, i) => {
       const color = SEV_COLOR[c.severity] ?? SEV_COLOR.normal;
       const reset = lastWithHint.get(hints[i]) === i ? `${DIM}${hints[i]}${RESET}` : '';
-      return `${c.label} ${gauge(c.percent, color)} ${color}${c.percent}%${RESET}${reset}`;
+      const marker = exhaustionMarker(forecasts.get(c.kind));
+      return `${c.label} ${gauge(c.percent, color)} ${color}${c.percent}%${RESET}${reset}${marker}`;
     })
     .join('  ');
 }
@@ -249,7 +343,18 @@ export function tokensSegment(stdinText, {
 // takes the stdin text and the parsed config and returns its rendered string.
 const SEGMENTS = {
   context: (stdin) => contextSegment(stdin),
-  limits: (stdin) => render(cardsFromStdin(stdin)),
+  limits: (stdin) => {
+    const cards = cardsFromStdin(stdin);
+    // Record this refresh's samples and project each limit's burn rate; the
+    // render appends a "⚠full …" marker only when one is on pace to run out
+    // before its reset, so the line stays short in the good case.
+    const nowMs = Date.now();
+    const hist = recordHistory(cards, {nowMs});
+    const forecasts = new Map(
+      cards.map((c) => [c.kind, forecast(hist[c.kind] ?? [], c.resetsAt, nowMs)]),
+    );
+    return render(cards, {forecasts});
+  },
   tokens: (stdin, cfg) => tokensSegment(stdin, {includeCacheRead: cfg.includeCacheRead}),
 };
 const DEFAULT_SEGMENTS = ['context', 'limits', 'tokens'];

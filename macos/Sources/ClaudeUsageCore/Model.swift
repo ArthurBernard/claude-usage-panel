@@ -129,3 +129,118 @@ public enum UsageNormalizer {
         return cards
     }
 }
+
+// MARK: - Burn-rate forecast
+
+/// Projection of when a limit hits 100% at the current pace. Mirrors pure.js
+/// `forecast()`; tests/fixtures/forecast.json pins both ports to the same
+/// numbers (ForecastParityTests).
+public struct Forecast: Equatable, Sendable {
+    /// Percent consumed per hour, rounded to 2 decimals.
+    public let pctPerHour: Double
+    /// Instant the limit reaches 100% at this pace, minute precision.
+    public let projectedFullAt: Date
+    /// True when `projectedFullAt` lands BEFORE the limit's reset — the case
+    /// worth warning about.
+    public let exhaustsBeforeReset: Bool
+    /// projectedFullAt − reset in hours (1 decimal): negative when the limit
+    /// runs out early. Nil when the card has no reset to compare to.
+    public let marginHours: Double?
+
+    public init(
+        pctPerHour: Double, projectedFullAt: Date,
+        exhaustsBeforeReset: Bool, marginHours: Double?
+    ) {
+        self.pctPerHour = pctPerHour
+        self.projectedFullAt = projectedFullAt
+        self.exhaustsBeforeReset = exhaustsBeforeReset
+        self.marginHours = marginHours
+    }
+}
+
+public enum UsageForecast {
+    static let windowMs: Double = 6 * 3_600_000  // regress over the last 6 h only
+    static let minSamples = 3  // never extrapolate from 2 points
+    static let minSpanMs: Double = 30 * 60_000  // …or from a burst narrower than 30 min
+    static let minPace = 0.2  // %/h below this is idle → no forecast
+
+    /// - Parameters:
+    ///   - samples: chronological (epochMs, percent) pairs
+    ///   - resetsAt: reset instant of the limit (nil → no comparison)
+    ///   - nowMs: injectable clock, epoch milliseconds
+    public static func forecast(samples: [(t: Double, p: Double)], resetsAt: Date?, nowMs: Double)
+        -> Forecast?
+    {
+        guard !samples.isEmpty else { return nil }
+        // A percent DROP means the window reset between samples — everything
+        // before the drop belongs to the previous window.
+        var start = 0
+        var i = samples.count - 1
+        while i > 0 {
+            if samples[i - 1].p > samples[i].p + 1 {
+                start = i
+                break
+            }
+            i -= 1
+        }
+        let win = samples[start...].filter { $0.t > nowMs - windowMs && $0.t <= nowMs }
+        guard win.count >= minSamples else { return nil }
+        let t0 = win[0].t
+        let last = win[win.count - 1]
+        guard last.t - t0 >= minSpanMs, last.p < 100 else { return nil }
+
+        // Weighted least squares (weight = recency rank) so the current pace
+        // dominates but one burst an hour ago doesn't predict doom all day.
+        var sw = 0.0
+        var swt = 0.0
+        var swp = 0.0
+        var swtt = 0.0
+        var swtp = 0.0
+        for (idx, s) in win.enumerated() {
+            let w = Double(idx + 1)
+            let th = (s.t - t0) / 3_600_000  // hours since window start
+            sw += w
+            swt += w * th
+            swp += w * s.p
+            swtt += w * th * th
+            swtp += w * th * s.p
+        }
+        let denom = sw * swtt - swt * swt
+        guard denom != 0 else { return nil }
+        let slope = (sw * swtp - swt * swp) / denom  // %/h
+        guard slope.isFinite, slope >= minPace else { return nil }
+
+        let fullMs = last.t + ((100 - last.p) / slope) * 3_600_000
+        let projectedMs = (fullMs / 60_000).rounded() * 60_000  // minute precision
+        let projected = Date(timeIntervalSince1970: projectedMs / 1000)
+        let margin: Double? = resetsAt.map {
+            (((projectedMs - $0.timeIntervalSince1970 * 1000) / 3_600_000) * 10).rounded() / 10
+        }
+        return Forecast(
+            pctPerHour: (slope * 100).rounded() / 100,
+            projectedFullAt: projected,
+            exhaustsBeforeReset: margin.map { $0 < 0 } ?? false,
+            marginHours: margin)
+    }
+
+    /// "↗ 1.8%/h — full ~Sun 03:40, 1d10h before reset" (alarming) or
+    /// "↗ 0.6%/h — lasts past reset" (fine). Mirrors pure.js `formatForecast`.
+    public static func format(_ fc: Forecast?) -> String {
+        guard let fc else { return "" }
+        let paceNum =
+            fc.pctPerHour == fc.pctPerHour.rounded()
+            ? String(Int(fc.pctPerHour)) : String(fc.pctPerHour)
+        let pace = "↗ \(paceNum)%/h"
+        guard fc.exhaustsBeforeReset else {
+            return fc.marginHours == nil ? pace : "\(pace) — lasts past reset"
+        }
+        let f = DateFormatter()
+        f.dateFormat = "EEE HH:mm"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        let lead = abs(fc.marginHours ?? 0)
+        let dd = Int(lead / 24)
+        let hh = Int((lead.truncatingRemainder(dividingBy: 24)).rounded())
+        let span = dd > 0 ? "\(dd)d\(hh)h" : "\(hh)h"
+        return "\(pace) — full ~\(f.string(from: fc.projectedFullAt)), \(span) before reset"
+    }
+}
