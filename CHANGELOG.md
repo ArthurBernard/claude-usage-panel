@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-08-01
+
 ### Added
 
 - **Burn-rate forecast on every limit.** From the timestamped usage history each
