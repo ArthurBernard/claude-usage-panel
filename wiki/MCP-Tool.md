@@ -1,14 +1,14 @@
-# MCP Tool — ask Claude or Cursor for your usage
+# MCP Tool - ask Claude or Cursor for your usage
 
 One MCP tool, **`get_usage`**, lets any MCP client answer *"how much of my plan
 have I used?"* in-conversation with live numbers: session, weekly, and
-per-model limits (Fable, Opus…) with percent, severity, and reset countdown —
+per-model limits (Fable, Opus…) with percent, severity, and reset countdown -
 the same data as the desktop panels, from the official Anthropic usage
 endpoint.
 
 Each limit carries `group` (`session` / `weekly`) and `scoped`. A scoped limit
-(Fable) is a **sub-cap of its group's pool** — that usage also counts toward
-`weekly_all` and shares its reset — so the rendered line says "share of the
+(Fable) is a **sub-cap of its group's pool** - that usage also counts toward
+`weekly_all` and shares its reset - so the rendered line says "share of the
 weekly all-models limit" instead of implying extra quota.
 
 Zero dependencies, stdio transport, read-only: it reads the OAuth token Claude
@@ -17,7 +17,7 @@ Keychain on macOS) and never writes it.
 
 ## Install
 
-All paths register the exact same server — pick one:
+All paths register the exact same server - pick one:
 
 ```bash
 # 1. The unified installer (registers Claude Code + Cursor in one go)
@@ -51,16 +51,16 @@ One entry per active limit, as text plus structured content:
 
 `pace` appears once enough local history exists (the server records a sample on
 every call, sharing a tmp file with the status line): the %/hour burn rate, the
-projected 100% instant, and whether that lands before the reset — so you can
+projected 100% instant, and whether that lands before the reset - so you can
 ask *"at this pace, will I make it to the weekly reset?"* and get a grounded
 answer. Absent when idle or on the first calls.
 
 Errors (no token, expired session, network) come back as tool errors with a
-one-line fix hint — e.g. *"Claude session expired. Run any Claude Code command
+one-line fix hint - e.g. *"Claude session expired. Run any Claude Code command
 to refresh it."*
 
 ## Details
 
 See [mcp/README.md](https://github.com/fschmutz/claude-usage-panel/blob/main/mcp/README.md).
-The server is the fourth port of the shared normalization contract — see
+The server is the fourth port of the shared normalization contract - see
 [[Architecture]].

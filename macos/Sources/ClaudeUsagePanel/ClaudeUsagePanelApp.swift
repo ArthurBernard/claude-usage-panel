@@ -61,7 +61,7 @@ final class UsageModel: ObservableObject {
     }
     @Published var cursorSummary: CursorSummary?
     @Published var cursorError: String?
-    /// Per-limit [epochMs, percent] samples — sparkline + burn-rate forecast.
+    /// Per-limit [epochMs, percent] samples - sparkline + burn-rate forecast.
     @Published private(set) var history: [String: [[Double]]] = [:]
     @Published private(set) var forecasts: [String: Forecast] = [:]
     private var alertFired: [String: Int] = [:]
@@ -78,7 +78,7 @@ final class UsageModel: ObservableObject {
         cursorEnabled = UserDefaults.standard.bool(forKey: "cursorEnabled")
         cursorApiKey = UserDefaults.standard.string(forKey: "cursorApiKey") ?? ""
         // Pair-form [epochMs, percent] history; bare-percent entries written by
-        // older versions migrate as [0, p] — sparkline keeps working, the
+        // older versions migrate as [0, p] - sparkline keeps working, the
         // forecast simply ignores the timestampless samples.
         let stored = UserDefaults.standard.dictionary(forKey: "history") ?? [:]
         history = stored.mapValues { v in
@@ -89,7 +89,7 @@ final class UsageModel: ObservableObject {
         launchAtLogin = LoginItem.isEnabled
 
         // First launch: register the login item by default, matching the GNOME
-        // extension's auto-enable. Only once — a later user opt-out is respected.
+        // extension's auto-enable. Only once - a later user opt-out is respected.
         // (didSet does not fire from init, so register explicitly.)
         if !UserDefaults.standard.bool(forKey: "didAutoRegisterLogin") {
             UserDefaults.standard.set(true, forKey: "didAutoRegisterLogin")
@@ -193,7 +193,7 @@ final class UsageModel: ObservableObject {
                     paceAlerted.insert(c.id)
                     notify(
                         "Claude usage",
-                        "\(c.label) is on pace to run out before it resets — "
+                        "\(c.label) is on pace to run out before it resets - "
                             + UsageForecast.format(forecasts[c.id]))
                 }
             } else if forecasts[c.id] == nil
@@ -232,7 +232,7 @@ final class UsageModel: ObservableObject {
     }
 
     /// Worst (highest %) limit, for the menu-bar title. A limit reading normal
-    /// but on pace to run out before its reset shows the warning dot —
+    /// but on pace to run out before its reset shows the warning dot -
     /// trouble at 50%, not at 90%.
     var titleText: String {
         guard let worst = cards.max(by: { $0.percent < $1.percent }) else {
@@ -310,7 +310,7 @@ private struct CardView: View {
             ProgressBar(percent: card.percent, color: color)
             HStack {
                 // A per-model card (Fable) caps a share of the weekly pool rather
-                // than adding one, so its reset line carries that note — same
+                // than adding one, so its reset line carries that note - same
                 // reset as the all-models card it draws from.
                 Text(
                     [resetsText(card.resetsAt), UsageNormalizer.poolNote(card)]

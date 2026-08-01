@@ -1,4 +1,4 @@
-// Pure logic — no GJS/gi imports, so it is unit-testable under plain `node`.
+// Pure logic - no GJS/gi imports, so it is unit-testable under plain `node`.
 // Shared by the extension (extension.js / claudeUsage.js / cursorUsage.js).
 
 const KIND_LABELS = {
@@ -54,7 +54,7 @@ function normalizeLimit(entry) {
 // A scoped (per-model) limit is a sub-cap ON its group's pooled limit, not a
 // pool of its own: Fable usage counts toward `weekly_all` and shares its reset.
 // The API leaves the scoped `resets_at` null until that model is used in the
-// window, so borrow the pooled reset — otherwise the Fable card shows no
+// window, so borrow the pooled reset - otherwise the Fable card shows no
 // countdown for every week it hasn't been touched yet.
 function inheritPooledResets(cards) {
     for (const card of cards) {
@@ -99,7 +99,7 @@ export function normalizeUsage(payload) {
 }
 
 // Sub-line for a scoped (per-model) card. Its percent measures a *share* of the
-// weekly pool — on Max, up to 50 % of the weekly allowance may go to Fable — so
+// weekly pool - on Max, up to 50 % of the weekly allowance may go to Fable - so
 // it is never extra headroom: every Fable token also moves `weekly_all`. Say so
 // on the card, or a Fable reading of 0 % reads as an untouched second pool.
 export function poolNote(card) {
@@ -165,14 +165,14 @@ const FORECAST_MIN_PACE = 0.2;           // %/h below this is idle → no foreca
  *            exhaustsBeforeReset: boolean, marginHours: ?number}}
  *   pctPerHour is rounded to 2 decimals; projectedFullAt to the minute;
  *   marginHours (projectedFullAt − reset, 1 decimal) is negative when the limit
- *   runs out BEFORE the reset — that is the alarming case — and null without a
+ *   runs out BEFORE the reset - that is the alarming case - and null without a
  *   reset to compare to. Returns null whenever an honest projection isn't
  *   possible: too few samples, idle pace, already at 100%.
  */
 export function forecast(samples, resetsAt, nowMs) {
     if (!Array.isArray(samples) || !samples.length)
         return null;
-    // A percent DROP means the window reset between samples — everything before
+    // A percent DROP means the window reset between samples - everything before
     // the drop belongs to the previous window and would poison the slope.
     let start = 0;
     for (let i = samples.length - 1; i > 0; i--) {
@@ -222,15 +222,15 @@ export function forecast(samples, resetsAt, nowMs) {
     };
 }
 
-// "↗ 1.8%/h — full ~Sun 03:40, 1d10h before reset" (alarming) or
-// "↗ 0.6%/h — lasts past reset" (fine) or "" (no forecast). Weekday+time are
+// "↗ 1.8%/h - full ~Sun 03:40, 1d10h before reset" (alarming) or
+// "↗ 0.6%/h - lasts past reset" (fine) or "" (no forecast). Weekday+time are
 // local, matching the reset countdowns next to it.
 export function formatForecast(fc) {
     if (!fc)
         return '';
     const pace = `↗ ${fc.pctPerHour}%/h`;
     if (!fc.exhaustsBeforeReset)
-        return fc.marginHours === null ? pace : `${pace} — lasts past reset`;
+        return fc.marginHours === null ? pace : `${pace} - lasts past reset`;
     const d = new Date(fc.projectedFullAt);
     const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
     const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -238,11 +238,11 @@ export function formatForecast(fc) {
     const dd = Math.floor(lead / 24);
     const hh = Math.round(lead % 24);
     const span = dd > 0 ? `${dd}d${hh}h` : `${hh}h`;
-    return `${pace} — full ~${day} ${hm}, ${span} before reset`;
+    return `${pace} - full ~${day} ${hm}, ${span} before reset`;
 }
 
 // History entries are stored as [t, p] pairs; entries written by versions that
-// stored bare percents migrate as [0, p] — still good for the sparkline, and
+// stored bare percents migrate as [0, p] - still good for the sparkline, and
 // the forecast window (t > now − 6 h) naturally ignores them.
 export function normalizeHistory(list) {
     if (!Array.isArray(list))

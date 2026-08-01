@@ -97,7 +97,7 @@ function makeCheckout(t, {localVersion, tags}) {
     return {dir, origin, work, seed, git};
 }
 
-// The script keeps its state under XDG_STATE_HOME — point it at the sandbox so
+// The script keeps its state under XDG_STATE_HOME - point it at the sandbox so
 // tests never touch the real ~/.local/state.
 const env = (dir) => ({
     ...process.env,

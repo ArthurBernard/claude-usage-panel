@@ -1,5 +1,5 @@
 // Data layer: read the local Claude Code OAuth token and query the official
-// usage endpoint. Read-only — we never write back to the credentials file.
+// usage endpoint. Read-only - we never write back to the credentials file.
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';

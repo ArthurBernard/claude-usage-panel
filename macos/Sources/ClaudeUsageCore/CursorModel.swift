@@ -1,6 +1,6 @@
 import Foundation
 
-// Pure Cursor spend model + math — Foundation only, unit-testable on Linux.
+// Pure Cursor spend model + math - Foundation only, unit-testable on Linux.
 
 public struct CursorTop: Equatable, Sendable {
     public let email: String

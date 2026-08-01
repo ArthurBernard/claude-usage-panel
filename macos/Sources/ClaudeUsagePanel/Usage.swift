@@ -6,7 +6,7 @@ import Foundation
 #endif
 
 // Networking + credential I/O. The pure model + normalization live in
-// ClaudeUsageCore (unit-tested). Read-only — we never write the credentials.
+// ClaudeUsageCore (unit-tested). Read-only - we never write the credentials.
 
 struct UsageResult {
     let cards: [LimitCard]

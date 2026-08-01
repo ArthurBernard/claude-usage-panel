@@ -3,7 +3,7 @@ name: wiki
 # The wiki/ directory in the main repo is the single source of truth for the
 # GitHub wiki. On every push to main that touches it, mirror it to
 # <repo>.wiki.git so nobody ever has to clone the wiki repo by hand.
-# (Do not edit pages through the GitHub wiki UI — this sync overwrites them.)
+# (Do not edit pages through the GitHub wiki UI - this sync overwrites them.)
 on:
   push:
     branches: [main]

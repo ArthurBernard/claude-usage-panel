@@ -41,7 +41,7 @@ final class UsageNormalizerTests: XCTestCase {
     }
 
     /// Fable draws from the weekly all-models pool, so its card is a sub-cap that
-    /// shares the pooled reset — the API only fills the scoped `resets_at` once
+    /// shares the pooled reset - the API only fills the scoped `resets_at` once
     /// Fable has been used in the window.
     func testScopedLimitInheritsPooledResetAndCarriesNote() {
         let cards = UsageNormalizer.normalize([
@@ -77,7 +77,7 @@ final class UsageNormalizerTests: XCTestCase {
 
 /// Cross-port parity: assert the Swift normalizer against the very same fixture
 /// file the JS ports use (tests/parity.test.js). One shared contract, three
-/// implementations — if any drifts on the semantic core, a port's suite reddens.
+/// implementations - if any drifts on the semantic core, a port's suite reddens.
 final class NormalizeParityTests: XCTestCase {
     func testMatchesSharedFixtures() throws {
         // #filePath → …/macos/Tests/ClaudeUsageCoreTests/CoreTests.swift; climb to repo root.
@@ -95,20 +95,20 @@ final class NormalizeParityTests: XCTestCase {
             let input = c["input"] as! [String: Any]
             let expected = c["expected"] as! [[String: Any]]
             let cards = UsageNormalizer.normalize(input)
-            XCTAssertEqual(cards.count, expected.count, "count — \(name)")
+            XCTAssertEqual(cards.count, expected.count, "count - \(name)")
             for (i, e) in expected.enumerated() where i < cards.count {
                 let card = cards[i]
                 XCTAssertEqual(
-                    card.id.components(separatedBy: ":")[0], e["kind"] as? String, "kind — \(name)")
-                XCTAssertEqual(card.group, e["group"] as? String, "group — \(name)")
-                XCTAssertEqual(card.scoped, e["scoped"] as? Bool, "scoped — \(name)")
-                XCTAssertEqual(card.percent, e["percent"] as? Int, "percent — \(name)")
+                    card.id.components(separatedBy: ":")[0], e["kind"] as? String, "kind - \(name)")
+                XCTAssertEqual(card.group, e["group"] as? String, "group - \(name)")
+                XCTAssertEqual(card.scoped, e["scoped"] as? Bool, "scoped - \(name)")
+                XCTAssertEqual(card.percent, e["percent"] as? Int, "percent - \(name)")
                 XCTAssertEqual(
-                    card.severity.rawValue, e["severity"] as? String, "severity — \(name)")
-                XCTAssertEqual(card.active, e["active"] as? Bool, "active — \(name)")
+                    card.severity.rawValue, e["severity"] as? String, "severity - \(name)")
+                XCTAssertEqual(card.active, e["active"] as? Bool, "active - \(name)")
                 XCTAssertEqual(
                     card.resetsAt, UsageNormalizer.parseDate(e["resetsAt"] as? String),
-                    "resetsAt — \(name)")
+                    "resetsAt - \(name)")
             }
         }
     }
@@ -145,7 +145,7 @@ final class CursorMathTests: XCTestCase {
 }
 
 /// Forecast parity: the burn-rate projection against the same fixture the three
-/// JS copies assert (tests/parity.test.js). Numbers must match exactly — the
+/// JS copies assert (tests/parity.test.js). Numbers must match exactly - the
 /// fixture is designed away from rounding boundaries so double math agrees
 /// across languages.
 final class ForecastParityTests: XCTestCase {
@@ -170,26 +170,26 @@ final class ForecastParityTests: XCTestCase {
             let got = UsageForecast.forecast(samples: samples, resetsAt: resetsAt, nowMs: now)
 
             guard let e = c["expected"] as? [String: Any] else {
-                XCTAssertNil(got, "expected nil — \(name)")
+                XCTAssertNil(got, "expected nil - \(name)")
                 continue
             }
-            let fc = try XCTUnwrap(got, "expected a forecast — \(name)")
+            let fc = try XCTUnwrap(got, "expected a forecast - \(name)")
             XCTAssertEqual(
                 fc.pctPerHour, (e["pctPerHour"] as! NSNumber).doubleValue,
-                accuracy: 0.001, "pace — \(name)")
+                accuracy: 0.001, "pace - \(name)")
             XCTAssertEqual(
                 fc.projectedFullAt,
                 UsageNormalizer.parseDate(e["projectedFullAt"] as? String),
-                "projectedFullAt — \(name)")
+                "projectedFullAt - \(name)")
             XCTAssertEqual(
                 fc.exhaustsBeforeReset, e["exhaustsBeforeReset"] as? Bool,
-                "exhausts — \(name)")
+                "exhausts - \(name)")
             if let m = e["marginHours"] as? NSNumber {
                 XCTAssertEqual(
                     try XCTUnwrap(fc.marginHours), m.doubleValue,
-                    accuracy: 0.001, "margin — \(name)")
+                    accuracy: 0.001, "margin - \(name)")
             } else {
-                XCTAssertNil(fc.marginHours, "margin nil — \(name)")
+                XCTAssertNil(fc.marginHours, "margin nil - \(name)")
             }
         }
     }
@@ -201,14 +201,14 @@ final class ForecastParityTests: XCTestCase {
             exhaustsBeforeReset: true, marginHours: -34.3)
         // Weekday/time render in the local zone; assert the shape.
         let s = UsageForecast.format(fc)
-        XCTAssertTrue(s.hasPrefix("↗ 1.8%/h — full ~"), s)
+        XCTAssertTrue(s.hasPrefix("↗ 1.8%/h - full ~"), s)
         XCTAssertTrue(s.hasSuffix(", 1d10h before reset"), s)
         XCTAssertEqual(
             UsageForecast.format(
                 Forecast(
                     pctPerHour: 0.6, projectedFullAt: Date(),
                     exhaustsBeforeReset: false, marginHours: 12)),
-            "↗ 0.6%/h — lasts past reset")
+            "↗ 0.6%/h - lasts past reset")
         XCTAssertEqual(
             UsageForecast.format(
                 Forecast(

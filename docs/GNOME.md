@@ -1,8 +1,8 @@
 # GNOME Shell extension
 
 The GNOME client puts your Claude plan usage in the top bar: a glyph colored by
-the worst limit's severity, and a designed dropdown with one card per limit —
-session, weekly, and per-model (Fable, Opus…) — each with a percent, severity
+the worst limit's severity, and a designed dropdown with one card per limit -
+session, weekly, and per-model (Fable, Opus…) - each with a percent, severity
 color, sparkline trend, and reset countdown. Desktop notifications fire when
 any limit first crosses 90% or 100%.
 
@@ -22,7 +22,7 @@ or from a checkout: `./install.sh gnome`. Either way the installer copies the
 extension, compiles its schema, clears the global `disable-user-extensions`
 switch if set, and enables it to auto-start on every login.
 
-Then **log out and back in** — Wayland loads new extensions only at login — and
+Then **log out and back in** - Wayland loads new extensions only at login - and
 confirm:
 
 ```bash
@@ -36,7 +36,7 @@ Or install from a packaged release instead:
 gnome-extensions install --force claude-usage-panel@fschmutz.github.io.shell-extension.zip
 ```
 
-An extensions.gnome.org listing is planned — see [PUBLISHING.md](../PUBLISHING.md).
+An extensions.gnome.org listing is planned - see [PUBLISHING.md](../PUBLISHING.md).
 
 ## Settings
 
@@ -48,22 +48,22 @@ Open via the dropdown's **Settings**, or:
 gnome-extensions prefs claude-usage-panel@fschmutz.github.io
 ```
 
-- **Refresh interval** — minutes between polls (default 10).
-- **Top bar shows** — worst limit or current session.
-- **Limit-crossing alerts** — notify at 90% / 100%.
-- **Show session cost** — optional local [`ccusage`](https://github.com/ryoppippi/ccusage)
+- **Refresh interval** - minutes between polls (default 10).
+- **Top bar shows** - worst limit or current session.
+- **Limit-crossing alerts** - notify at 90% / 100%.
+- **Show session cost** - optional local [`ccusage`](https://github.com/ryoppippi/ccusage)
   cost (needs Node.js / `npx`).
-- **Cursor (optional)** — toggle + Admin API key (create one at cursor.com →
+- **Cursor (optional)** - toggle + Admin API key (create one at cursor.com →
   your team → Settings → Admin API). Calls `api.cursor.com` (`/teams/spend`,
   `/teams/filtered-usage-events`) and shows the billing-cycle spend, today's
-  spend, and the top spender — with a colored % gauge when the team has a
+  spend, and the top spender - with a colored % gauge when the team has a
   monthly spend limit set. Cursor is usage-based, so it shows spend rather than
   a percentage otherwise. Off by default; the key is stored locally in dconf.
 
 ## Updating
 
 Installing from a checkout also schedules a **daily update check** (the
-`autoupdate` target — a systemd user timer), so new releases install themselves;
+`autoupdate` target - a systemd user timer), so new releases install themselves;
 you still need to log out / back in for the shell to load the new code. By hand:
 
 ```bash

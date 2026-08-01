@@ -15,7 +15,7 @@
 ## "No Claude credentials found"
 
 - **Linux:** sign in with Claude Code (creates `~/.claude/.credentials.json`).
-- **macOS:** the token is in the Keychain — allow Keychain access on first launch.
+- **macOS:** the token is in the Keychain - allow Keychain access on first launch.
 - If the token expired, run any Claude Code command to refresh it.
 
 ## Cost shows "unavailable"
@@ -28,7 +28,7 @@ Re-check the Admin API key and that your account is a **team admin** (the Admin 
 
 ## Clicking Refresh closed the popup
 
-Fixed in v1.2.1 — update and relog.
+Fixed in v1.2.1 - update and relog.
 
 ## It's not updating itself
 
@@ -42,7 +42,7 @@ launchctl list | grep claude-usage-panel                 # macOS
 The log says why. Common reasons, all deliberate: the checkout has **local
 changes** or a **diverged / detached branch** (it never touches your work), there
 is **no newer released tag** yet (a `main` commit is not a release), the machine
-was **offline**, or the daily check was never installed —
+was **offline**, or the daily check was never installed -
 `./install.sh autoupdate` adds it, `./install.sh --list` shows whether it's
 there. Run `scripts/auto-update.sh` by hand any time to force a check.
 

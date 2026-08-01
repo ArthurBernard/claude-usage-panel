@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Claude Code status line: a condensed, one-line view of your Claude plan usage,
 // rendered just under the prompt input. It reads ONLY what Claude Code pipes on
-// stdin — the context window, the account Session (5 h) / Week (7 d) rate limits,
-// and the session transcript for a token total — so it needs no credentials and
+// stdin - the context window, the account Session (5 h) / Week (7 d) rate limits,
+// and the session transcript for a token total - so it needs no credentials and
 // no network. This is deliberately the cheap terminal projection: per-model
 // (e.g. Fable) weekly limits and API severity are API-only and shown only by the
 // GNOME extension and the macOS app, never here. Output is left-aligned (Claude
@@ -19,7 +19,7 @@ const TOKENS_CACHE_PATH = path.join(os.tmpdir(), 'claude-usage-statusline-tokens
 
 // Timestamped percent samples per limit, SHARED with the MCP server (both write
 // the same file, best-effort) so each invocation densifies the other's history.
-// Feeds the burn-rate forecast; like the token cache it is a local tmp file —
+// Feeds the burn-rate forecast; like the token cache it is a local tmp file -
 // still no credentials and no network.
 const HISTORY_PATH = path.join(os.tmpdir(), 'claude-usage-history.json');
 
@@ -27,7 +27,7 @@ const HISTORY_PATH = path.join(os.tmpdir(), 'claude-usage-history.json');
 // status line has little horizontal room.
 const KIND_LABELS = {session: 'Session', weekly_all: 'Week'};
 
-// ANSI palette. Each gauge is colored by severity — green healthy, yellow
+// ANSI palette. Each gauge is colored by severity - green healthy, yellow
 // warning, red critical.
 const SEV_COLOR = {
   normal: '\x1b[32m', // green
@@ -44,7 +44,7 @@ const FRACTIONS = ['', '▏', '▎', '▍', '▌', '▋', '▊', '▉'];
 const EMPTY = '░';
 const GAUGE_WIDTH = 6;
 
-// "Resets in 3h06m" / "4d2h" — compact, only the two most significant units.
+// "Resets in 3h06m" / "4d2h" - compact, only the two most significant units.
 export function resetHint(resetsAt) {
   if (!resetsAt) return '';
   const ms = new Date(resetsAt).getTime() - Date.now();
@@ -61,7 +61,7 @@ export function resetHint(resetsAt) {
 // A compact fixed-width bar whose fill (colored by severity) tracks the
 // percentage down to 1/8 of a cell, with the remainder dimmed. The percent is
 // clamped to [0,100] here so no caller can overflow the width or (with a
-// negative value) drive FULL.repeat() to throw — the line must never crash.
+// negative value) drive FULL.repeat() to throw - the line must never crash.
 export function gauge(percent, color) {
   const p = Math.max(0, Math.min(100, Number(percent) || 0));
   const eighths = Math.round((p / 100) * GAUGE_WIDTH * 8);
@@ -129,7 +129,7 @@ const FORECAST_MIN_SAMPLES = 3;
 const FORECAST_MIN_SPAN_MS = 30 * 60_000;
 const FORECAST_MIN_PACE = 0.2;
 
-// Project when a limit hits 100% at the current pace — see pure.js for the
+// Project when a limit hits 100% at the current pace - see pure.js for the
 // full contract; the three JS copies + Swift are pinned by one fixture.
 export function forecast(samples, resetsAt, nowMs) {
   if (!Array.isArray(samples) || !samples.length) return null;
@@ -177,7 +177,7 @@ export function forecast(samples, resetsAt, nowMs) {
 
 // Append this invocation's samples to the shared history file and return the
 // updated {kind: [[t, p], …]} map. Best-effort on a tmp file: a concurrent MCP
-// write may win a race — worst case one sample is lost, never an error.
+// write may win a race - worst case one sample is lost, never an error.
 export function recordHistory(cards, {nowMs = Date.now(), historyPath = HISTORY_PATH} = {}) {
   let hist = {};
   try {
@@ -200,7 +200,7 @@ export function recordHistory(cards, {nowMs = Date.now(), historyPath = HISTORY_
 }
 
 // "⚠full Sun03:40" appended to the gauge of the worst limit projected to run
-// out before its reset. Silent in the good case — the line stays short.
+// out before its reset. Silent in the good case - the line stays short.
 export function exhaustionMarker(fc) {
   if (!fc?.exhaustsBeforeReset) return '';
   const d = new Date(fc.projectedFullAt);
@@ -215,7 +215,7 @@ export function render(cards, {forecasts = new Map()} = {}) {
   if (!shown.length) return '';
 
   // A reset countdown is shown once, after the LAST limit that displays the same
-  // value — so a weekly reset shared by several cards isn't repeated.
+  // value - so a weekly reset shared by several cards isn't repeated.
   const hints = shown.map((c) => resetHint(c.resetsAt));
   const lastWithHint = new Map();
   hints.forEach((h, i) => {
@@ -243,8 +243,8 @@ export function formatTokens(n) {
   return String(n);
 }
 
-// Sum every token each assistant turn consumed — prompt, cache writes, cache
-// reads and completion — across all assistant messages in the session transcript
+// Sum every token each assistant turn consumed - prompt, cache writes, cache
+// reads and completion - across all assistant messages in the session transcript
 // (a JSONL, one message per line). Deduped by message id so a replayed line
 // isn't counted twice. Cache reads dominate a long session, so this is the true
 // throughput; pass includeCacheRead=false for "fresh" tokens.
@@ -257,7 +257,7 @@ export function sumTranscriptTokens(jsonlText, includeCacheRead = true) {
     try {
       o = JSON.parse(line);
     } catch {
-      continue; // a partial last line while Claude Code is writing — skip it
+      continue; // a partial last line while Claude Code is writing - skip it
     }
     const u = o?.message?.usage;
     if (!u) continue;
@@ -295,7 +295,7 @@ export function transcriptTotals(p, {
     const cached = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
     if (cached && cached.sig === sig) return cached;
   } catch {
-    // no cache, unreadable, or a different transcript — recompute below.
+    // no cache, unreadable, or a different transcript - recompute below.
   }
   let text;
   try {

@@ -4,7 +4,7 @@
 
 export default [
     {
-        // Node.js code (ESM, Node globals — not GJS): the Claude Code status
+        // Node.js code (ESM, Node globals - not GJS): the Claude Code status
         // line, the MCP server, and the test suite (which runs under node).
         files: ['claude-code/**/*.js', 'mcp/**/*.js', 'tests/**/*.js'],
         languageOptions: {

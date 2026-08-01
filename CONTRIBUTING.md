@@ -11,7 +11,7 @@ pre-commit install
 ```
 
 `pre-commit` runs ESLint, `swift-format`, shellcheck, shfmt, markdownlint, and
-gitleaks — the same set runs in CI on every push.
+gitleaks - the same set runs in CI on every push.
 
 ## Layout
 
@@ -37,7 +37,7 @@ See the [Architecture](https://github.com/fschmutz/claude-usage-panel/wiki/Archi
 wiki page. The normalization contract is duplicated per port (GNOME `lib/pure.js`,
 macOS `Model.swift`, MCP `mcp/server.js`) and kept identical by
 `tests/parity.test.js` + its Swift twin against one shared fixture
-(`tests/fixtures/normalize.json`) — change any port and the fixture together.
+(`tests/fixtures/normalize.json`) - change any port and the fixture together.
 
 ## Rules
 

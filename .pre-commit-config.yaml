@@ -19,7 +19,7 @@ repos:
       - id: check-xml
       - id: check-yaml
 
-  # Secret scanning — never commit an API key or credential
+  # Secret scanning - never commit an API key or credential
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.21.2
     hooks:
@@ -52,7 +52,7 @@ repos:
     hooks:
       - id: markdownlint
 
-  # GitHub Actions workflows — catch workflow bugs before they ship (the
+  # GitHub Actions workflows - catch workflow bugs before they ship (the
   # release.yml dispatch-tag bug would have been caught here).
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.7
@@ -62,6 +62,14 @@ repos:
   # Project-local guards
   - repo: local
     hooks:
+      # Em-dashes (U+2014) are banned everywhere in this repo: docs, UI strings,
+      # code. The pattern is built from escape bytes so this config line itself
+      # stays clean.
+      - id: no-em-dash
+        name: no em-dash
+        language: system
+        entry: bash -c 'd=$(printf "\342\200\224"); out=$(grep -Hn "$d" "$@" || true); if [ -n "$out" ]; then echo "$out"; echo "em-dash (U+2014) is forbidden; use - or rephrase"; exit 1; fi' --
+        types: [text]
       # Swift (uses the toolchain's built-in swift-format)
       - id: swift-format
         name: swift-format lint

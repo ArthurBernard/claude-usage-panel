@@ -1,6 +1,6 @@
 # Installation
 
-One line — it fetches the repo into `~/.local/share/claude-usage-panel` and
+One line - it fetches the repo into `~/.local/share/claude-usage-panel` and
 auto-detects your OS to install the sensible set:
 
 ```bash
@@ -39,7 +39,7 @@ Requirements: GNOME Shell 45–50, an active Claude Code login.
 
 The `gnome` target copies the extension, compiles its GSettings schema, clears the
 global `disable-user-extensions` switch if set, and enables the extension for every
-login. Then **log out and back in** — Wayland only loads new extensions at login.
+login. Then **log out and back in** - Wayland only loads new extensions at login.
 
 ```bash
 gnome-extensions info claude-usage-panel@fschmutz.github.io   # State: ACTIVE
@@ -67,7 +67,7 @@ and opens it. On first run it **registers itself to start at login** (toggle in
 Settings ▸ Start at login). Just want to run it without installing?
 `cd macos && swift run`. See [[macOS]] for login-item and Keychain details.
 
-## MCP tool — no clone needed
+## MCP tool - no clone needed
 
 The `get_usage` tool also installs without touching the repo:
 
@@ -88,7 +88,7 @@ See [[MCP Tool]].
 
 ### Automatically (on by default)
 
-Installing from a git checkout also schedules a **daily update check** — the
+Installing from a git checkout also schedules a **daily update check** - the
 `autoupdate` target. Once a day it reads the highest released `vX.Y.Z` tag on
 `origin`; if that's newer than your `package.json` version it fast-forwards the
 checkout and runs `install.sh update`, so every client you have moves to the new
@@ -108,8 +108,8 @@ scripts/auto-update.sh              # look now, and install it if there is one
 ```
 
 It is deliberately timid about your checkout: it **only ever fast-forwards**
-(no merge, rebase, reset or stash), and it skips — logging the reason, changing
-nothing — when the worktree is dirty, the branch is diverged or detached, there
+(no merge, rebase, reset or stash), and it skips - logging the reason, changing
+nothing - when the worktree is dirty, the branch is diverged or detached, there
 is no `origin`, or the network is down. It also reinstalls **only** the targets
 already installed, so it never adds a client you didn't want. The rolling log
 is `~/.local/state/claude-usage-panel/auto-update.log`.

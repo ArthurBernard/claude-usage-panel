@@ -40,13 +40,13 @@ mkt="$(sed -nE 's/.*"version": *"([^"]+)".*/\1/p' .claude-plugin/marketplace.jso
 [ "$mkt" = "$want" ] || note ".claude-plugin/marketplace.json plugin version is '$mkt', expected '$want'"
 
 # install.sh must read the macOS bundle version from package.json, never hardcode
-# it — the plist lines must interpolate \$ver, not a literal semver.
+# it - the plist lines must interpolate \$ver, not a literal semver.
 if grep -nE 'CFBundle(Short)?Version(String)?</key><string>[0-9]+\.[0-9]+\.[0-9]+<' install.sh; then
-    note "install.sh hardcodes a bundle version — it must use \$ver from package.json"
+    note "install.sh hardcodes a bundle version - it must use \$ver from package.json"
 fi
 
 if [ "$fail" -ne 0 ]; then
-    echo "check-versions: drift detected — run scripts/bump-version.sh <ver> to sync." >&2
+    echo "check-versions: drift detected - run scripts/bump-version.sh <ver> to sync." >&2
     exit 1
 fi
 echo "check-versions: all version sites match $want"

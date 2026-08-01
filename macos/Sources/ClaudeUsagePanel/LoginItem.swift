@@ -14,7 +14,7 @@ enum LoginItem {
     }
 
     /// Register / unregister the login item. Idempotent and never throws to the
-    /// caller — a failure (e.g. unsigned bundle, or a pending user approval) is
+    /// caller - a failure (e.g. unsigned bundle, or a pending user approval) is
     /// logged so the UI toggle can just reflect `isEnabled` afterwards.
     static func setEnabled(_ on: Bool) {
         do {

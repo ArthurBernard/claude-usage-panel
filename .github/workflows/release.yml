@@ -41,7 +41,7 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       # Build the installable GNOME zip: metadata.json at the root, the compiled
-      # GSettings schema, and compiled translations — same layout install.sh makes.
+      # GSettings schema, and compiled translations - same layout install.sh makes.
       - name: Build GNOME extension zip
         id: pack
         run: |
@@ -90,7 +90,7 @@ jobs:
 
   # Build the macOS .app on a Mac runner and attach it to the release. The zip
   # is ad-hoc signed (not notarized), so first launch needs a right-click ▸ Open
-  # — or just build locally with `./install.sh macos`. Notarization: PUBLISHING.md.
+  # - or just build locally with `./install.sh macos`. Notarization: PUBLISHING.md.
   macos-asset:
     needs: release
     runs-on: macos-latest

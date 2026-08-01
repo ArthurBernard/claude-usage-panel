@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Claude Usage Panel — see your Claude Code usage in the top bar</title>
+<title>Claude Usage Panel - see your Claude Code usage in the top bar</title>
 <meta name="description" content="A GNOME Shell + macOS menu-bar panel showing Claude Code plan limits (session, weekly, per-model like Fable) with a designed dropdown, alerts, sparklines, and optional Cursor spend.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9C%B3%3C/text%3E%3C/svg%3E">
 <meta property="og:title" content="Claude Usage Panel">
-<meta property="og:description" content="See your Claude Code plan usage at a glance — GNOME top bar or macOS menu bar.">
+<meta property="og:description" content="See your Claude Code plan usage at a glance - GNOME top bar or macOS menu bar.">
 <meta property="og:image" content="https://fschmutz.github.io/claude-usage-panel/og.png">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
@@ -110,7 +110,7 @@
 <section class="hero"><div class="wrap"><div class="grid">
   <div>
     <h1>See your Claude Code usage,<br>without leaving your desktop.</h1>
-    <p class="sub">Session, weekly, and <strong>per-model</strong> limits (Fable, Opus…) — the same numbers as <code>/usage</code>, always visible in the GNOME top bar, the macOS menu bar, under your Claude Code prompt — or just ask Claude or Cursor.</p>
+    <p class="sub">Session, weekly, and <strong>per-model</strong> limits (Fable, Opus…) - the same numbers as <code>/usage</code>, always visible in the GNOME top bar, the macOS menu bar, under your Claude Code prompt - or just ask Claude or Cursor.</p>
     <div class="cta">
       <a class="btn primary" href="#install">Install →</a>
       <a class="btn ghost" href="https://github.com/fschmutz/claude-usage-panel/releases/latest">Download release</a>
@@ -127,19 +127,19 @@
 
 <section id="features"><div class="wrap">
   <h2>Everything, at a glance</h2>
-  <p class="lead">One designed dropdown for every plan limit — plus alerts, trends, and optional Cursor spend.</p>
+  <p class="lead">One designed dropdown for every plan limit - plus alerts, trends, and optional Cursor spend.</p>
   <div class="features">
-    <div class="feat"><div class="ic">📊</div><h3>All plan limits</h3><p>Session, weekly, and per-model (Fable, Opus…) — one card each, from the official <code>limits[]</code> API.</p></div>
-    <div class="feat"><div class="ic">🎨</div><h3>Severity colors</h3><p>Normal / warning / critical, straight from the API — reflected in the top-bar glyph too.</p></div>
+    <div class="feat"><div class="ic">📊</div><h3>All plan limits</h3><p>Session, weekly, and per-model (Fable, Opus…) - one card each, from the official <code>limits[]</code> API.</p></div>
+    <div class="feat"><div class="ic">🎨</div><h3>Severity colors</h3><p>Normal / warning / critical, straight from the API - reflected in the top-bar glyph too.</p></div>
     <div class="feat"><div class="ic">🔔</div><h3>Limit alerts</h3><p>A desktop notification the moment a limit first hits 90% or 100%.</p></div>
     <div class="feat"><div class="ic">📈</div><h3>Usage sparkline</h3><p>A tiny per-limit trend graph so you see where you're heading, not just where you are.</p></div>
     <div class="feat"><div class="ic">💲</div><h3>Session cost</h3><p>Optional dollar cost computed locally via <code>ccusage</code>.</p></div>
-    <div class="feat"><div class="ic">🟣</div><h3>Cursor spend</h3><p>Optional team cycle spend, today, and top spender via the Cursor Admin API — with a % gauge when a limit is set.</p></div>
-    <div class="feat"><div class="ic">⌨️</div><h3>Terminal status line</h3><p>A condensed one-line view right under the Claude Code prompt — Context, Session/Week limits, and a Σ session-token counter, read straight from Claude Code's stdin. No network, no credentials.</p></div>
-    <div class="feat"><div class="ic">🤖</div><h3>Ask Claude (MCP)</h3><p>A <code>get_usage</code> MCP tool for Claude Code and Cursor — ask "how much of my plan have I used?" and get live limits in the conversation. One-click Add to Cursor.</p></div>
+    <div class="feat"><div class="ic">🟣</div><h3>Cursor spend</h3><p>Optional team cycle spend, today, and top spender via the Cursor Admin API - with a % gauge when a limit is set.</p></div>
+    <div class="feat"><div class="ic">⌨️</div><h3>Terminal status line</h3><p>A condensed one-line view right under the Claude Code prompt - Context, Session/Week limits, and a Σ session-token counter, read straight from Claude Code's stdin. No network, no credentials.</p></div>
+    <div class="feat"><div class="ic">🤖</div><h3>Ask Claude (MCP)</h3><p>A <code>get_usage</code> MCP tool for Claude Code and Cursor - ask "how much of my plan have I used?" and get live limits in the conversation. One-click Add to Cursor.</p></div>
   </div>
   <div class="why">
-    <b>Why this one?</b> Most Claude usage indicators read the endpoint's legacy fields and show only the aggregate session + weekly pair. This one reads the modern <b>limits[]</b> array, so it shows <b>every</b> limit the Claude app shows — including <b>per-model weekly limits</b> the others miss — on <b>both Linux and macOS</b>, with native UI on each. No Electron.
+    <b>Why this one?</b> Most Claude usage indicators read the endpoint's legacy fields and show only the aggregate session + weekly pair. This one reads the modern <b>limits[]</b> array, so it shows <b>every</b> limit the Claude app shows - including <b>per-model weekly limits</b> the others miss - on <b>both Linux and macOS</b>, with native UI on each. No Electron.
   </div>
 </div></section>
 
@@ -162,22 +162,22 @@
 <pre id="cmd-gnome">curl -fsSL https://fschmutz.github.io/claude-usage-panel/install | bash -s -- gnome</pre>
       <button class="copy" data-copy="cmd-gnome" aria-label="Copy GNOME install command">Copy</button>
     </div>
-    <p class="lead" style="margin-top:14px">Installs and enables the extension — then log out and back in (Wayland loads new extensions only at login). Or grab the <code>.shell-extension.zip</code> from the <a href="https://github.com/fschmutz/claude-usage-panel/releases/latest">latest release</a>. Details: <a href="https://github.com/fschmutz/claude-usage-panel/blob/main/docs/GNOME.md">GNOME guide</a>.</p>
+    <p class="lead" style="margin-top:14px">Installs and enables the extension - then log out and back in (Wayland loads new extensions only at login). Or grab the <code>.shell-extension.zip</code> from the <a href="https://github.com/fschmutz/claude-usage-panel/releases/latest">latest release</a>. Details: <a href="https://github.com/fschmutz/claude-usage-panel/blob/main/docs/GNOME.md">GNOME guide</a>.</p>
   </div>
   <div class="pane" id="macos">
     <div class="oneliner">
 <pre id="cmd-macos">curl -fsSL https://fschmutz.github.io/claude-usage-panel/install | bash -s -- macos</pre>
       <button class="copy" data-copy="cmd-macos" aria-label="Copy macOS install command">Copy</button>
     </div>
-    <p class="lead" style="margin-top:14px">macOS 13+. Builds the app, installs to /Applications, and <b>starts at login</b> (toggle in Settings). The token is read from the login Keychain — click <b>Always Allow</b> on first launch.</p>
+    <p class="lead" style="margin-top:14px">macOS 13+. Builds the app, installs to /Applications, and <b>starts at login</b> (toggle in Settings). The token is read from the login Keychain - click <b>Always Allow</b> on first launch.</p>
   </div>
   <div class="pane" id="claude">
-    <p class="lead" style="margin-top:6px"><b>Status line</b> — a one-line usage gauge under the prompt: <code>Context ▌░░ 8%  Session █▌░ 26% 59m  Week █▌░ 24%  ∑ 1.2M tok</code></p>
+    <p class="lead" style="margin-top:6px"><b>Status line</b> - a one-line usage gauge under the prompt: <code>Context ▌░░ 8%  Session █▌░ 26% 59m  Week █▌░ 24%  ∑ 1.2M tok</code></p>
     <div class="oneliner">
 <pre id="cmd-sl">curl -fsSL https://fschmutz.github.io/claude-usage-panel/install | bash -s -- statusline</pre>
       <button class="copy" data-copy="cmd-sl" aria-label="Copy status line install command">Copy</button>
     </div>
-    <p class="lead" style="margin-top:16px"><b>get_usage tool</b> — ask Claude "how much of my plan have I used?" in any session. Paste inside Claude Code:</p>
+    <p class="lead" style="margin-top:16px"><b>get_usage tool</b> - ask Claude "how much of my plan have I used?" in any session. Paste inside Claude Code:</p>
     <div class="oneliner">
 <pre id="cmd-plugin">/plugin marketplace add fschmutz/claude-usage-panel
 /plugin install claude-usage@claude-usage-panel</pre>
@@ -190,16 +190,16 @@
     </div>
   </div>
   <div class="pane" id="cursor">
-    <p class="lead" style="margin-top:6px">One click adds the <b>get_usage</b> MCP tool to Cursor — ask "how much of my Claude plan have I used?" in chat:</p>
+    <p class="lead" style="margin-top:6px">One click adds the <b>get_usage</b> MCP tool to Cursor - ask "how much of my Claude plan have I used?" in chat:</p>
     <p style="text-align:center;margin:18px 0">
       <a class="btn primary" href="cursor://anysphere.cursor-deeplink/mcp/install?name=claude-usage&amp;config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImdpdGh1Yjpmc2NobXV0ei9jbGF1ZGUtdXNhZ2UtcGFuZWwiXX0=">⊕ Add to Cursor</a>
     </p>
-    <p class="lead">Needs Cursor installed (the button opens the app). Manual alternative — add under <code>mcpServers</code> in <code>~/.cursor/mcp.json</code>:</p>
+    <p class="lead">Needs Cursor installed (the button opens the app). Manual alternative - add under <code>mcpServers</code> in <code>~/.cursor/mcp.json</code>:</p>
     <div class="oneliner">
 <pre id="cmd-cursor">"claude-usage": {"command": "npx", "args": ["-y", "github:fschmutz/claude-usage-panel"]}</pre>
       <button class="copy" data-copy="cmd-cursor" aria-label="Copy Cursor mcp.json entry">Copy</button>
     </div>
-    <p class="lead" style="margin-top:14px">The desktop panels can also show your Cursor <b>team spend</b> (Admin API key, optional) — see <a href="https://github.com/fschmutz/claude-usage-panel/blob/main/docs/GNOME.md">the guide</a>.</p>
+    <p class="lead" style="margin-top:14px">The desktop panels can also show your Cursor <b>team spend</b> (Admin API key, optional) - see <a href="https://github.com/fschmutz/claude-usage-panel/blob/main/docs/GNOME.md">the guide</a>.</p>
   </div>
   <p class="lead" style="margin-top:14px">It keeps itself current: a daily check installs new releases for you (only ever fast-forwarding a clean checkout, and only the clients you already have). Prefer to drive it yourself? <code>./install.sh update --pull</code> upgrades on demand, and <code>./install.sh --uninstall autoupdate</code> turns the daily check off. Every target has a matching <code>--uninstall</code>.</p>
   <div class="shots2">
@@ -214,7 +214,7 @@
 <pre>GET https://api.anthropic.com/api/oauth/usage
     authorization: Bearer &lt;token&gt;
     anthropic-beta: oauth-2025-04-20</pre>
-  <p class="lead" style="margin-top:16px">The response's <code>limits[]</code> array drives one card per limit — each with a percent, severity, reset time, and optional model scope. On Linux the token lives in <code>~/.claude/.credentials.json</code>; on macOS, the login Keychain.</p>
+  <p class="lead" style="margin-top:16px">The response's <code>limits[]</code> array drives one card per limit - each with a percent, severity, reset time, and optional model scope. On Linux the token lives in <code>~/.claude/.credentials.json</code>; on macOS, the login Keychain.</p>
 </div></section>
 
 <footer><div class="wrap"><div class="row">

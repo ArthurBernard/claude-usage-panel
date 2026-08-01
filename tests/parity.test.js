@@ -1,9 +1,9 @@
 // Cross-port parity: the OAuth-usage normalization contract lives in three
-// hand-written copies — lib/pure.js (GNOME), ClaudeUsageCore/Model.swift
+// hand-written copies - lib/pure.js (GNOME), ClaudeUsageCore/Model.swift
 // (macOS), and mcp/server.js (MCP). All are asserted against ONE shared fixture
 // set: tests/fixtures/normalize.json (the Swift port asserts the same file in
 // ClaudeUsageCoreTests). If any port drifts on the semantic core (kinds, order,
-// percent, severity, reset, active), this test — and its Swift twin — go red.
+// percent, severity, reset, active), this test - and its Swift twin - go red.
 //
 // The Claude Code status line is intentionally NOT a party to this contract: it
 // renders purely from Claude Code's stdin and never normalizes an OAuth payload,
@@ -33,10 +33,10 @@ const core = (c) => ({
 });
 
 for (const {name, input, expected} of cases) {
-    test(`pure.js normalize — ${name}`, () => {
+    test(`pure.js normalize - ${name}`, () => {
         assert.deepEqual(normalizePure(input).map(core), expected);
     });
-    test(`mcp/server.js normalize — ${name}`, () => {
+    test(`mcp/server.js normalize - ${name}`, () => {
         assert.deepEqual(normalizeMcp(input).map(core), expected);
     });
 }
@@ -58,7 +58,7 @@ for (const [portName, fn] of [
     ['mcp/server.js', forecastMcp],
 ]) {
     for (const c of forecastFix.cases) {
-        test(`${portName} forecast — ${c.name}`, () => {
+        test(`${portName} forecast - ${c.name}`, () => {
             assert.deepEqual(fn(c.samples, c.resetsAt, forecastFix.now), c.expected);
         });
     }

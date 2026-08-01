@@ -1,5 +1,5 @@
 {
-  "comment": "Demo data for the generated screenshots — every number is fake. The clock is FIXED so the render is byte-deterministic and CI can drift-gate it. Times are UTC; the generator formats them with a fixed offset, never the host zone.",
+  "comment": "Demo data for the generated screenshots - every number is fake. The clock is FIXED so the render is byte-deterministic and CI can drift-gate it. Times are UTC; the generator formats them with a fixed offset, never the host zone.",
   "nowIso": "2026-08-01T14:24:00Z",
   "plan": "Max (20x)",
   "updated": "16:24",

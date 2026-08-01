@@ -9,10 +9,10 @@ Adds a **Cursor team-spend** section to the dropdown using the Cursor Admin API.
 
 ## What it shows
 
-- **This cycle** — total team spend for the billing cycle, and member count.
-- **Today** — today's charged spend.
-- **Top** — the top spender.
-- **Gauge** — when the team has a monthly spend limit set, a colored `%` bar (spend ÷ limit);
+- **This cycle** - total team spend for the billing cycle, and member count.
+- **Today** - today's charged spend.
+- **Top** - the top spender.
+- **Gauge** - when the team has a monthly spend limit set, a colored `%` bar (spend ÷ limit);
   otherwise it shows spend text (Cursor is usage-based).
 
 ## Endpoints

@@ -7,11 +7,11 @@
 #   scripts/auto-update.sh --force      re-run the install even if already up to date
 #   scripts/auto-update.sh --quiet      log only, no stdout (this is what the timer runs)
 #
-# Scheduled once a day by `./install.sh autoupdate` — a systemd user timer on
+# Scheduled once a day by `./install.sh autoupdate` - a systemd user timer on
 # Linux, a launchd agent on macOS, a cron line as fallback. Safe to run by hand
 # at any time; a lock keeps two runs from overlapping.
 #
-# "Latest version" is the highest `vX.Y.Z` tag on the origin remote — i.e. a cut
+# "Latest version" is the highest `vX.Y.Z` tag on the origin remote - i.e. a cut
 # release, not whatever is on main right now. When one exists, the checkout is
 # fast-forwarded and `install.sh update` reinstalls exactly the targets that are
 # already installed (never adds new ones).
@@ -19,7 +19,7 @@
 # It refuses to touch a checkout it does not own: a dirty worktree, a detached
 # HEAD, a branch with no upstream, or a missing remote each make it skip with a
 # message instead of moving anyone's work. Nothing here rebases, resets, stashes
-# or force-pushes — the only git write is `merge --ff-only`.
+# or force-pushes - the only git write is `merge --ff-only`.
 #
 # Exit codes: 0 = up to date / updated / skipped, 10 = update available
 # (--check only), 1 = error, 2 = usage.
@@ -57,7 +57,7 @@ usage() {
 }
 
 # Compare two dotted versions; print 1 if $1 > $2, -1 if $1 < $2, else 0. A
-# leading "v" and any -prerelease/+build suffix are ignored — only released
+# leading "v" and any -prerelease/+build suffix are ignored - only released
 # X.Y.Z tags are ever fed to it (see latest_remote_version).
 version_compare() {
     local a="${1#v}" b="${2#v}" i x y
@@ -88,7 +88,7 @@ local_version() {
 }
 
 # Highest released vX.Y.Z tag on the remote. Prints nothing if the remote is
-# unreachable or has no version tags — callers treat that as "skip, try tomorrow".
+# unreachable or has no version tags - callers treat that as "skip, try tomorrow".
 latest_remote_version() {
     local ref tag best=""
     while read -r _ ref; do
@@ -102,7 +102,7 @@ latest_remote_version() {
     printf '%s' "$best"
 }
 
-# Desktop notification, best effort — never fail the run over it.
+# Desktop notification, best effort - never fail the run over it.
 notify() {
     local title="$1" body="$2"
     if command -v notify-send >/dev/null; then
@@ -116,7 +116,7 @@ notify() {
 # Reasons to leave the checkout alone. Prints the reason and returns 1.
 repo_is_updatable() {
     if ! git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        echo "not a git checkout ($ROOT) — nothing to pull from"
+        echo "not a git checkout ($ROOT) - nothing to pull from"
         return 1
     fi
     if ! git -C "$ROOT" remote get-url origin >/dev/null 2>&1; then
@@ -124,16 +124,16 @@ repo_is_updatable() {
         return 1
     fi
     if [ -n "$(git -C "$ROOT" status --porcelain 2>/dev/null)" ]; then
-        echo "local changes in $ROOT — leaving them alone"
+        echo "local changes in $ROOT - leaving them alone"
         return 1
     fi
     if ! git -C "$ROOT" symbolic-ref --quiet HEAD >/dev/null 2>&1; then
-        echo "detached HEAD in $ROOT — leaving it alone"
+        echo "detached HEAD in $ROOT - leaving it alone"
         return 1
     fi
     if ! git -C "$ROOT" rev-parse --abbrev-ref --symbolic-full-name '@{u}' \
         >/dev/null 2>&1; then
-        echo "current branch tracks no upstream — leaving it alone"
+        echo "current branch tracks no upstream - leaving it alone"
         return 1
     fi
     return 0
@@ -191,13 +191,13 @@ fi
 
 # ── One run at a time ───────────────────────────────────────────────────────────
 # mkdir is the portable atomic lock (flock is not on macOS). A lock older than
-# 6h is stale — a previous run was killed mid-flight.
+# 6h is stale - a previous run was killed mid-flight.
 if ! mkdir "$LOCK" 2>/dev/null; then
     if [ -n "$(find "$LOCK" -maxdepth 0 -mmin +360 2>/dev/null)" ]; then
         rm -rf "$LOCK"
         mkdir "$LOCK" 2>/dev/null || die "could not take the lock at $LOCK"
     else
-        say "another update run is in progress — skipping"
+        say "another update run is in progress - skipping"
         exit 0
     fi
 fi
@@ -216,7 +216,7 @@ have="$(local_version)"
 latest="$(latest_remote_version)"
 date '+%Y-%m-%dT%H:%M:%S%z' >"$STATE_DIR/last-check"
 if [ -z "$latest" ]; then
-    say "skip: could not reach the remote (offline?) — will retry tomorrow"
+    say "skip: could not reach the remote (offline?) - will retry tomorrow"
     trim_log
     exit 0
 fi
@@ -240,13 +240,13 @@ git -C "$ROOT" fetch --quiet --tags origin || die "git fetch failed"
 # --ff-only: if the branch has diverged this refuses rather than merging or
 # rewriting anything, and the run ends here with the checkout untouched.
 if ! git -C "$ROOT" merge --ff-only --quiet "$upstream" 2>>"$LOG"; then
-    say "skip: $upstream is not a fast-forward from here — update by hand"
+    say "skip: $upstream is not a fast-forward from here - update by hand"
     trim_log
     exit 0
 fi
 
 now="$(local_version)"
-say "fast-forwarded to v$now — reinstalling the targets already installed"
+say "fast-forwarded to v$now - reinstalling the targets already installed"
 
 # `install.sh update` reinstalls only what `--list` reports as installed, so
 # this never adds a client the user chose not to have.
@@ -254,7 +254,7 @@ if "$ROOT/install.sh" update >>"$LOG" 2>&1; then
     say "updated to v$now"
     notify "Claude Usage Panel updated" "Now on v$now. GNOME: log out and back in to load it."
 else
-    say "install.sh update failed after fast-forwarding to v$now — see $LOG"
+    say "install.sh update failed after fast-forwarding to v$now - see $LOG"
     notify "Claude Usage Panel update failed" "Fetched v$now but the reinstall failed. See $LOG"
     trim_log
     exit 1

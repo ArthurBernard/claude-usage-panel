@@ -9,7 +9,7 @@ Anthropic usage endpoint: a **GNOME Shell extension**, a **macOS SwiftUI menu-ba
 app**, a **Node status line** for under the Claude Code prompt, and an **MCP
 server** (`mcp/server.js`) exposing a `get_usage` tool to Claude Code / Cursor
 (installable as a Claude Code plugin from `.claude-plugin/marketplace.json` +
-`plugin/`, or via `npx -y github:fschmutz/claude-usage-panel` — package.json has
+`plugin/`, or via `npx -y github:fschmutz/claude-usage-panel` - package.json has
 a `bin` entry). All read a locally-stored OAuth token read-only and render the
 same `limits[]` data. An optional Cursor team-spend section is available in the
 two desktop clients.
@@ -17,19 +17,19 @@ two desktop clients.
 ## Commands
 
 ```bash
-# JS unit tests (GNOME lib + status line) — the primary test gate
+# JS unit tests (GNOME lib + status line) - the primary test gate
 npm test                          # node --test tests/*.test.js
 node --test tests/pure.test.js    # single file
 node --test --test-name-pattern="sparkline" tests/pure.test.js  # single test
 
-# Swift core unit tests (runs on Linux CI too — no macOS needed)
+# Swift core unit tests (runs on Linux CI too - no macOS needed)
 cd macos && swift test
 
 # Lint / format everything (same set runs in CI on every push)
 pre-commit run --all-files
 pre-commit run eslint --all-files   # single hook
 
-# Install — one unified entrypoint for all clients (also reachable with
+# Install - one unified entrypoint for all clients (also reachable with
 # curl -fsSL https://fschmutz.github.io/claude-usage-panel/install | bash [-s -- target…])
 ./install.sh                 # auto-detect OS → install the sensible set
 ./install.sh gnome           # GNOME extension only → then log out/in (Wayland)
@@ -41,44 +41,44 @@ pre-commit run eslint --all-files   # single hook
 ./install.sh --uninstall [target...]   # reverse it   |   --list (detected + installed)   |   -h
 ./install.sh --dry-run [target...]     # print actions without touching anything
 
-# Screenshots are GENERATED — after any UI-visible contract change:
+# Screenshots are GENERATED - after any UI-visible contract change:
 node scripts/screenshots/render.mjs          # rewrites docs/screenshot.svg + og.svg
 node scripts/screenshots/render.mjs --check  # what CI runs; exits 1 on drift
 
 # Release: bump the version everywhere from one source of truth
 ./scripts/bump-version.sh 1.4.0
 
-# Daily auto-update worker (what the timer runs) — safe to run by hand
+# Daily auto-update worker (what the timer runs) - safe to run by hand
 ./scripts/auto-update.sh --status    # installed vs newest released tag, last check
 ./scripts/auto-update.sh --check     # check only; exit 10 = update available
 ```
 
 Auto-update reads the highest released `vX.Y.Z` tag on `origin`, so **a release
-only reaches users once the tag is pushed** — bumping `package.json` on main is
+only reaches users once the tag is pushed** - bumping `package.json` on main is
 not enough. It only ever `merge --ff-only`s, and skips a dirty, diverged or
 detached checkout rather than touching it; `tests/autoupdate.test.js` asserts
 each of those guards against a throwaway local bare remote (offline).
 
-There is **no build step for the GNOME extension or the status line** — they run
+There is **no build step for the GNOME extension or the status line** - they run
 the source files directly. `npm` is only a test runner; there are no runtime deps.
 
-## Architecture — one contract, three ports
+## Architecture - one contract, three ports
 
 The load-bearing idea: **all business logic is pure and duplicated across
 languages, kept behaviorally identical by a shared test contract.** When you
 change normalization, severity, sparkline, reset-formatting, or Cursor
 summarization, you must change it in **every** port and keep them matching.
 
-- **`claude-usage-panel@fschmutz.github.io/lib/pure.js`** — GNOME pure logic. No
+- **`claude-usage-panel@fschmutz.github.io/lib/pure.js`** - GNOME pure logic. No
   `gi`/GJS imports so it runs under plain `node` for tests. This is the reference
   implementation.
-- **`macos/Sources/ClaudeUsageCore/Model.swift`** (+ `CursorModel.swift`) —
+- **`macos/Sources/ClaudeUsageCore/Model.swift`** (+ `CursorModel.swift`) -
   Foundation-only mirror of `pure.js`. No networking/SwiftUI, so it unit-tests on
   Linux CI. Comment in the file explicitly says "Mirrors the GNOME extension's
-  lib/pure.js" — keep it that way.
-- **`claude-code/statusline.js`** — standalone, zero-dependency Node; re-derives
+  lib/pure.js" - keep it that way.
+- **`claude-code/statusline.js`** - standalone, zero-dependency Node; re-derives
   the same normalization for the terminal one-liner.
-- **`mcp/server.js`** — standalone, zero-dependency Node MCP server (stdio
+- **`mcp/server.js`** - standalone, zero-dependency Node MCP server (stdio
   JSON-RPC); duplicates `normalizeUsage` as the fourth port and is asserted
   against the shared fixture in `tests/parity.test.js`. Carries an exported
   `VERSION` const kept in sync by `scripts/bump-version.sh` and guarded by
@@ -88,7 +88,7 @@ summarization, you must change it in **every** port and keep them matching.
 **Parity is CI-enforced.** `tests/fixtures/normalize.json` is one shared set of
 raw payloads + expected core output; `tests/parity.test.js` runs it through both
 JS ports and the Swift `NormalizeParityTests` runs it through `UsageNormalizer`.
-Change any normalizer and update the fixture — a drifting port goes red. Labels
+Change any normalizer and update the fixture - a drifting port goes red. Labels
 are intentionally per-port (compact in the terminal) and are *not* asserted.
 
 The normalization contract (must stay identical across ports):
@@ -99,7 +99,7 @@ The normalization contract (must stay identical across ports):
   `label · <model display_name>` suffix and a `kind:model` composite key.
 - Every card carries `group` (from the payload's `group`, else derived from the
   kind prefix: `weekly_*` → `weekly`) and `scoped` (a per-model limit). A scoped
-  limit is a **sub-cap of its group's pool, not a pool of its own** — Fable
+  limit is a **sub-cap of its group's pool, not a pool of its own** - Fable
   usage also moves `weekly_all` and shares its reset (verified live
   2026-07-26 + the Fable-5 help-center page: on Max up to 50% of the weekly
   allowance may go to Fable). Two consequences all ports implement: a scoped
@@ -109,12 +109,12 @@ The normalization contract (must stay identical across ports):
 - `clampPercent` → 0..100 int; `severity` comes straight from the API
   (normal/warning/critical) and also drives the top-bar glyph color.
 - `alertThreshold` buckets to 0/90/100 for limit-crossing notifications.
-- `forecast(samples, resetsAt, now)` — burn-rate projection from timestamped
+- `forecast(samples, resetsAt, now)` - burn-rate projection from timestamped
   [epochMs, percent] samples: weighted regression over the last 6 h, pruned at
   window resets, silent unless ≥3 samples span ≥30 min and pace ≥0.2%/h.
   Returns {pctPerHour, projectedFullAt, exhaustsBeforeReset, marginHours};
   `tests/fixtures/forecast.json` pins all four ports (values chosen away from
-  rounding boundaries so double math agrees across JS and Swift — keep new
+  rounding boundaries so double math agrees across JS and Swift - keep new
   cases that way). Drives the card sub-line, the predictive top-bar tint, a
   once-per-window exhaustion alert (fires at margin ≤ −1 h, re-arms at ≥ +2 h),
   the status line's "⚠full …" marker, and the MCP `pace` field. The status
@@ -140,13 +140,13 @@ GET https://api.anthropic.com/api/oauth/usage
 
 Token location: `~/.claude/.credentials.json` on Linux; the **login Keychain** on
 macOS (read via `security find-generic-password`). Clients **never write the
-token** — on expiry they tell the user to run any Claude Code command to refresh.
+token** - on expiry they tell the user to run any Claude Code command to refresh.
 Cost (optional) shells out to `ccusage`; Cursor (optional) calls `api.cursor.com`
 with the user's Admin API key.
 
 ## Conventions
 
-- **The GitHub wiki is generated** — its source of truth is `wiki/*.md` in this
+- **The GitHub wiki is generated** - its source of truth is `wiki/*.md` in this
   repo, auto-published to `<repo>.wiki.git` by `.github/workflows/wiki.yml`
   (`scripts/wiki-sync.sh`) on every push to main touching `wiki/**`. Never
   clone or edit the wiki repo directly; the sync overwrites it.
@@ -155,8 +155,8 @@ with the user's Admin API key.
   Shell is shellcheck + shfmt (`-i 4 -ci`). All gated by pre-commit **and** CI.
 - Bump `version` in `package.json`, `version-name` in `metadata.json`, and update
   `CHANGELOG.md` together when releasing (see `PUBLISHING.md`). `package.json` is
-  the single source of truth for the macOS bundle version — `install.sh macos`
+  the single source of truth for the macOS bundle version - `install.sh macos`
   reads it into the `Info.plist`; do not hardcode a version anywhere else.
 - Any logic change needs its matching unit test in `tests/*.test.js` and/or
-  `macos/Tests/ClaudeUsageCoreTests/` — the ports are only kept in sync because
+  `macos/Tests/ClaudeUsageCoreTests/` - the ports are only kept in sync because
   the tests assert the same behavior.

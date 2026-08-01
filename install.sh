@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Unified installer for Claude Usage Panel — one entrypoint for all three
+# Unified installer for Claude Usage Panel - one entrypoint for all three
 # clients (GNOME extension, macOS menu-bar app, Claude Code status line).
 #
 #   ./install.sh                    auto-detect this OS and install the sensible set
@@ -235,7 +235,7 @@ install_mcp() {
             ok "registered in Claude Code (user scope)"
         fi
     else
-        skip "claude CLI not found — register manually: claude mcp add claude-usage -- node \"$dest\""
+        skip "claude CLI not found - register manually: claude mcp add claude-usage -- node \"$dest\""
     fi
 
     # Cursor: merge our entry into ~/.cursor/mcp.json without touching others.
@@ -255,14 +255,14 @@ JS
             ok "registered in Cursor (~/.cursor/mcp.json)"
         fi
     else
-        skip "Cursor not detected (no ~/.cursor) — skipped its mcp.json"
+        skip "Cursor not detected (no ~/.cursor) - skipped its mcp.json"
     fi
 
     if $DRY; then
         ok "dry-run: no changes written"
         return 0
     fi
-    ok "installed to $dest — ask 'how much of my plan have I used?' in either app"
+    ok "installed to $dest - ask 'how much of my plan have I used?' in either app"
 }
 
 uninstall_mcp() {
@@ -348,7 +348,7 @@ PLIST
     codesign --deep --force --sign - "$bundle" >/dev/null 2>&1 || true
     ok "built $bundle (v$ver)"
 
-    # CI builds the bundle only (to zip as a release asset) — no /Applications.
+    # CI builds the bundle only (to zip as a release asset) - no /Applications.
     if $BUILD_ONLY; then
         ok "build-only: skipped /Applications install"
         return 0
@@ -357,13 +357,13 @@ PLIST
     # Make it perpetual: install into /Applications and launch it. On first run
     # the app registers itself as a login item (toggle in Settings ▸ Start at login).
     # Quit any running instance first so we replace (not copy over) a busy bundle
-    # and so `open` relaunches the NEW binary — this is what makes upgrades take.
+    # and so `open` relaunches the NEW binary - this is what makes upgrades take.
     osascript -e 'quit app "Claude Usage Panel"' >/dev/null 2>&1 || true
     local installed="/Applications/$app.app"
     if rm -rf "$installed" 2>/dev/null && cp -R "$bundle" "$installed" 2>/dev/null; then
         open "$installed" 2>/dev/null || true
         ok "installed to $installed and launched"
-        echo "  Starts at login by default — toggle it in Settings ▸ Start at login."
+        echo "  Starts at login by default - toggle it in Settings ▸ Start at login."
     else
         echo "  Could not write /Applications (needs admin). Install it yourself:"
         echo "    sudo cp -R '$bundle' '$installed' && open '$installed'"
@@ -381,7 +381,7 @@ uninstall_macos() {
 # ── Daily auto-update ───────────────────────────────────────────────────────────
 # Schedules scripts/auto-update.sh once a day. That script is the one with all
 # the safety rules (skips a dirty or diverged checkout, only ever fast-forwards,
-# reinstalls just the targets already present) — here we only wire the schedule.
+# reinstalls just the targets already present) - here we only wire the schedule.
 AU_UNIT="claude-usage-panel-update"                       # systemd user units
 AU_LABEL="io.github.fschmutz.claude-usage-panel.update"   # launchd agent
 AU_CRON_TAG="# claude-usage-panel auto-update"            # cron marker line
@@ -426,7 +426,7 @@ _au_installed() {
 install_autoupdate() {
     info "Daily auto-update"
     if ! git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        skip "autoupdate: $ROOT is not a git checkout — nothing to update from"
+        skip "autoupdate: $ROOT is not a git checkout - nothing to update from"
         return 0
     fi
     local runner="$ROOT/scripts/auto-update.sh"
@@ -438,7 +438,7 @@ install_autoupdate() {
             dir="$(_au_systemd_dir)"
             _au_write "$dir/$AU_UNIT.service" <<EOF
 [Unit]
-Description=Claude Usage Panel — daily update check
+Description=Claude Usage Panel - daily update check
 Documentation=https://github.com/fschmutz/claude-usage-panel
 
 [Service]
@@ -449,7 +449,7 @@ EOF
             # off); RandomizedDelaySec spreads the load off a round hour.
             _au_write "$dir/$AU_UNIT.timer" <<EOF
 [Unit]
-Description=Claude Usage Panel — daily update check
+Description=Claude Usage Panel - daily update check
 
 [Timer]
 OnCalendar=daily
@@ -500,7 +500,7 @@ EOF
             if $DRY; then
                 echo "  would: add crontab line: $line"
             else
-                # Drop any previous line of ours, then append — idempotent.
+                # Drop any previous line of ours, then append - idempotent.
                 {
                     crontab -l 2>/dev/null | grep -vF "$AU_CRON_TAG" || true
                     echo "$line"
@@ -640,7 +640,7 @@ done
 if [ "$action" = list ]; then
     detected="$(detect_targets | paste -sd' ' -)"
     installed="$(installed_targets | paste -sd' ' -)"
-    info "Claude Usage Panel — targets (version $(version))"
+    info "Claude Usage Panel - targets (version $(version))"
     echo "  all:        $ALL_TARGETS"
     echo "  detected:   ${detected:-<none>}   (bare ./install.sh installs these)"
     echo "  installed:  ${installed:-<none>}   (./install.sh update reinstalls these)"

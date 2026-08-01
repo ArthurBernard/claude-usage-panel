@@ -10,40 +10,40 @@ semantic versioning.
 
 - **Burn-rate forecast on every limit.** From the timestamped usage history each
   client already keeps, a weighted regression over the last 6 h projects when a
-  limit hits 100% and whether that lands **before its reset** — surfaced as a
-  sub-line on the GNOME/macOS cards ("↗ 4%/h — full ~Sat 21:24, 3d7h before
+  limit hits 100% and whether that lands **before its reset** - surfaced as a
+  sub-line on the GNOME/macOS cards ("↗ 4%/h - full ~Sat 21:24, 3d7h before
   reset", amber when alarming), a predictive top-bar/menu-bar tint (trouble
   visible at 50%, not at 90%), a one-shot desktop notification with hysteresis
   when a limit first goes on pace to run dry ≥1 h early, a compact
   "⚠full Sat21:24" marker in the status line, and a `pace` object per limit in
-  the MCP `get_usage` output — so you can ask "will I make it to the reset?".
+  the MCP `get_usage` output - so you can ask "will I make it to the reset?".
   The projection is deliberately honest: it needs ≥3 samples spanning ≥30 min,
   ignores samples older than 6 h or from before a window reset, and stays
   silent when idle. One implementation contract across all four ports, pinned
   by `tests/fixtures/forecast.json` (JS ×3 + Swift parity suites).
   The status line and MCP server share one local sample file
-  (`$TMPDIR/claude-usage-history.json`) so each densifies the other's history —
+  (`$TMPDIR/claude-usage-history.json`) so each densifies the other's history -
   still no credentials, no network.
 - **Screenshots are now generated, and CI fails on drift.**
   `scripts/screenshots/render.mjs` renders `docs/screenshot.svg` + `docs/og.svg`
   (and rasterizes `og.png` when a rasterizer is present) from
-  `scripts/screenshots/data.json`, driving the real shared logic — normalize,
-  forecast, pool notes, sparklines — under a fixed clock, so the pictures
+  `scripts/screenshots/data.json`, driving the real shared logic - normalize,
+  forecast, pool notes, sparklines - under a fixed clock, so the pictures
   cannot drift from what the code renders. A `screenshots` CI job runs
   `render.mjs --check`; forgetting to regenerate after a UI-visible change goes
   red. README and the landing page now embed the SVG.
 
-## [1.6.0] — 2026-08-01
+## [1.6.0] - 2026-08-01
 
 ### Added
 
-- **Daily auto-update** — `scripts/auto-update.sh` checks the newest released
+- **Daily auto-update** - `scripts/auto-update.sh` checks the newest released
   tag on `origin` once a day, fast-forwards the checkout when it's newer, and
   runs `install.sh update` so every client you already have moves to the new
   version by itself. Scheduled by the new `./install.sh autoupdate` target: a
   systemd user timer on Linux, a launchd agent on macOS, a cron line as
   fallback, all with matching `--uninstall`, `--list` detection and `--dry-run`.
-  It's part of the default detected set on a git checkout — turn it off with
+  It's part of the default detected set on a git checkout - turn it off with
   `./install.sh --uninstall autoupdate`.
   The script only ever `merge --ff-only`s, and skips (with a logged reason,
   never a modification) when the worktree is dirty, the branch is diverged or
@@ -56,7 +56,7 @@ semantic versioning.
 
 - **Per-model limits are now shown as what they are: a share of the weekly
   pool.** Fable usage draws from the weekly all-models limit (on Max, up to 50%
-  of the weekly allowance may go to Fable) rather than from a pool of its own —
+  of the weekly allowance may go to Fable) rather than from a pool of its own -
   confirmed against the live endpoint on 2026-07-26 and Anthropic's Fable 5
   help-center page. Every port's card now carries `group` (`session` / `weekly`)
   and `scoped`, the GNOME / macOS cards and the MCP tool output carry a "share
@@ -67,28 +67,28 @@ semantic versioning.
 
 - **A per-model card no longer loses its reset countdown.** The API leaves the
   scoped `resets_at` null until that model is used in the window, so a scoped
-  card now inherits the reset of the pooled limit it draws from — the Fable card
+  card now inherits the reset of the pooled limit it draws from - the Fable card
   showed a percent with no countdown for any week Fable hadn't been touched yet.
 
-## [1.5.0] — 2026-07-19
+## [1.5.0] - 2026-07-19
 
 ### Added
 
-- **MCP server** (`mcp/server.js`) — a zero-dependency stdio server exposing a
+- **MCP server** (`mcp/server.js`) - a zero-dependency stdio server exposing a
   `get_usage` tool, so Claude Code and Cursor can answer "how much of my plan
   have I used?" in-conversation. Fourth port of the shared normalization
   contract, parity-tested with the others; `tests/mcp.test.js` covers the
   JSON-RPC plumbing end-to-end. Runs from anywhere via
   `npx -y github:fschmutz/claude-usage-panel` (new `bin` entry).
-- **`install.sh mcp` target** — copies the server to
+- **`install.sh mcp` target** - copies the server to
   `~/.claude/claude-usage-mcp.mjs` and registers it in Claude Code
   (`claude mcp add`, user scope) and Cursor (`~/.cursor/mcp.json` merge),
   with matching `--uninstall`, detection, and `--dry-run`.
 - **Claude Code plugin + marketplace** (`.claude-plugin/marketplace.json`,
-  `plugin/`) — `/plugin marketplace add fschmutz/claude-usage-panel` then
+  `plugin/`) - `/plugin marketplace add fschmutz/claude-usage-panel` then
   `/plugin install claude-usage@claude-usage-panel` installs the usage tool
   without cloning anything.
-- **One-line installer** — `curl -fsSL
+- **One-line installer** - `curl -fsSL
   https://fschmutz.github.io/claude-usage-panel/install | bash` clones or
   updates `~/.local/share/claude-usage-panel` and forwards to `install.sh`
   (targets and flags pass through with `bash -s -- …`).
@@ -106,12 +106,12 @@ semantic versioning.
   `.github/workflows/release.yml`, which builds the GNOME `.shell-extension.zip`,
   pulls the version's notes from `CHANGELOG.md`, and publishes the Release with
   the zip attached (re-runnable from the Actions tab for an existing tag).
-- `install.sh update [target…]` upgrades an existing install in place —
+- `install.sh update [target…]` upgrades an existing install in place -
   reinstalling only the targets already present (detected), with `--pull` to
   `git pull --ff-only` first. macOS quits the running app and relaunches the new
   build so the upgrade actually takes effect; `--list` now shows detected vs
   installed targets.
-- Status line: a **Σ per-session token counter** — the cumulative tokens the
+- Status line: a **Σ per-session token counter** - the cumulative tokens the
   window has consumed, summed from the transcript Claude Code points to, with
   `all` (includes cache reads = true throughput) and `fresh` modes. The token
   sums are cached on disk keyed by the transcript's size+mtime, so a multi-MB
@@ -126,7 +126,7 @@ semantic versioning.
   (Context + Session/Week + the transcript for the token total), fixing the
   cold-start "unavailable" message and always showing every limit even at 0 %.
   It needs no credentials, no network, and no OAuth cache. **Per-model (Fable)
-  limits are now desktop-only by design** — stdin never exposes them, so the
+  limits are now desktop-only by design** - stdin never exposes them, so the
   terminal line drops them while the GNOME extension and macOS app keep them via
   the OAuth endpoint. The now-unused `normalizeUsage` and OAuth cache helpers
   were removed from the status line, and it is no longer part of the cross-port
@@ -135,11 +135,11 @@ semantic versioning.
 - **README restructured** around one canonical home per topic: a one-line
   install + target table up top, deep detail moved to per-target docs (new
   `docs/GNOME.md`; existing `macos/`, `claude-code/`, new `mcp/` READMEs), the
-  repo tree into `CONTRIBUTING.md`. No content dropped — everything moved.
+  repo tree into `CONTRIBUTING.md`. No content dropped - everything moved.
 - `scripts/bump-version.sh` + `scripts/check-versions.sh` now cover the new
   version sites (MCP server const, plugin manifest, marketplace entry).
 
-## [1.4.0] — 2026-07-13
+## [1.4.0] - 2026-07-13
 
 ### Added
 
@@ -153,7 +153,7 @@ semantic versioning.
 - GNOME: light-theme support for the dropdown.
 - Internationalization scaffolding (gettext `.pot` + a French translation).
 - **Cross-port parity test**: one shared `tests/fixtures/normalize.json` asserts
-  the GNOME, status-line, and macOS normalizers all agree on the semantic core —
+  the GNOME, status-line, and macOS normalizers all agree on the semantic core -
   drift between the three hand-written copies now reddens CI.
 - **macOS CI job** (`macos-latest`) compiles the real SwiftUI app, not just the
   Foundation-only core, so app-layer type errors are caught in CI.
@@ -185,20 +185,20 @@ semantic versioning.
 
 - macOS: correct legacy-usage fallback ids (`session` / `weekly_all`).
 
-## [1.2.2] — 2026-07-07
+## [1.2.2] - 2026-07-07
 
 ### Added
 
 - Cursor spend **gauge**: a colored `%` bar when the team has a monthly spend
   limit set (falls back to spend text otherwise), on GNOME and macOS.
 
-## [1.2.1] — 2026-07-07
+## [1.2.1] - 2026-07-07
 
 ### Fixed
 
 - GNOME: clicking **Refresh now** no longer closes the popup.
 
-## [1.2.0] — 2026-07-07
+## [1.2.0] - 2026-07-07
 
 ### Added
 
@@ -206,7 +206,7 @@ semantic versioning.
 - macOS: native Settings window + Cursor support; token read from the login Keychain.
 - Optional Cursor team-spend section (Cursor Admin API).
 
-## [1.0.0] — 2026-07-03
+## [1.0.0] - 2026-07-03
 
 ### Added
 

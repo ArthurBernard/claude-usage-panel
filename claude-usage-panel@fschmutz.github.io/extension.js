@@ -1,4 +1,4 @@
-// Claude Usage Panel — GNOME Shell 45-50
+// Claude Usage Panel - GNOME Shell 45-50
 // Shows Claude Code plan limits (session / weekly / per-model) in the top bar
 // with a designed dropdown, plus optional session cost via ccusage.
 
@@ -23,7 +23,7 @@ import {
 } from './lib/pure.js';
 
 const TRACK_WIDTH = 300; // px, must match .cu-track min-width in stylesheet.css
-// Timestamped samples kept per limit — enough for the forecast's 6 h regression
+// Timestamped samples kept per limit - enough for the forecast's 6 h regression
 // window even at the 1-minute minimum refresh interval isn't needed; at the
 // 10-minute default this holds ~15 h of context. The sparkline shows the last 12.
 const HISTORY_MAX = 90;
@@ -71,7 +71,7 @@ class UsageCard extends St.BoxLayout {
         this._fill.style_class = `cu-fill ${sev}`;
         this._fill.style = `width: ${px}px;`;
         // A per-model card (Fable) caps a share of the weekly pool rather than
-        // adding one, so its reset line carries that note — same reset as the
+        // adding one, so its reset line carries that note - same reset as the
         // all-models card it draws from.
         const reset = formatResets(card.resetsAt);
         const note = poolNote(card);
@@ -257,7 +257,7 @@ class ClaudeUsageButton extends PanelMenu.Button {
 
     async refresh() {
         // Skip if a refresh is already in flight (e.g. a slow ccusage call
-        // straddling the next timer tick) — avoids piling up requests.
+        // straddling the next timer tick) - avoids piling up requests.
         if (this._refreshing)
             return;
         this._refreshing = true;
@@ -352,7 +352,7 @@ class ClaudeUsageButton extends PanelMenu.Button {
             const threshold = alertThreshold(card.percent);
             if (threshold > prev) {
                 this._alertFired.set(card.key, threshold);
-                const tail = card.resetsAt ? ` — ${formatResets(card.resetsAt)}` : '';
+                const tail = card.resetsAt ? ` - ${formatResets(card.resetsAt)}` : '';
                 Main.notify(_('Claude usage'),
                     _('%s reached %d%%').format(card.label, threshold) + tail);
             } else if (threshold < prev && card.percent < 85) {
@@ -369,7 +369,7 @@ class ClaudeUsageButton extends PanelMenu.Button {
                     this._paceAlerted.add(card.key);
                     Main.notify(_('Claude usage'),
                         _('%s is on pace to run out before it resets').format(card.label) +
-                        ` — ${formatForecast(fc)}`);
+                        ` - ${formatForecast(fc)}`);
                 }
             } else if (!fc || (!fc.exhaustsBeforeReset && (fc.marginHours ?? 99) >= 2)) {
                 this._paceAlerted.delete(card.key);
@@ -457,7 +457,7 @@ class ClaudeUsageButton extends PanelMenu.Button {
         const shortLabel = card.label.split('·').pop().trim();
         this._panelLabel.text = `${shortLabel} ${card.percent}%`;
         // Predictive tint: a limit reading normal but on pace to run out before
-        // its reset shows amber in the top bar — trouble at 50%, not at 90%.
+        // its reset shows amber in the top bar - trouble at 50%, not at 90%.
         let sev = severityClass(card.severity);
         if (sev === 'cu-normal' && this._forecasts.get(card.key)?.exhaustsBeforeReset)
             sev = 'cu-warning';

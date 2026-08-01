@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Claude Usage MCP server: exposes the same plan-usage data as the desktop
 // panels through one Model Context Protocol tool (`get_usage`), so any MCP
-// client — Claude Code, Cursor, Claude Desktop… — can ask "how much of my plan
+// client - Claude Code, Cursor, Claude Desktop… - can ask "how much of my plan
 // have I used?" in-conversation. Zero dependencies, stdio transport, read-only:
 // it reads the OAuth token Claude Code already stores locally and calls the
 // official usage endpoint, exactly like the GNOME extension and the macOS app.
@@ -16,7 +16,7 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 
-// Bumped by scripts/bump-version.sh — keep in sync with package.json.
+// Bumped by scripts/bump-version.sh - keep in sync with package.json.
 export const VERSION = '1.6.0';
 
 const USAGE_ENDPOINT = 'https://api.anthropic.com/api/oauth/usage';
@@ -111,7 +111,7 @@ export function normalizeUsage(payload) {
 
 // Note for a scoped (per-model) card: its percent is a *share* of the weekly
 // pool (on Max, up to 50 % of the weekly allowance may go to Fable), never
-// extra headroom — every Fable token also moves `weekly_all`.
+// extra headroom - every Fable token also moves `weekly_all`.
 export function poolNote(card) {
   return card?.scoped && card.group === 'weekly' ? 'share of the weekly all-models limit' : '';
 }
@@ -128,7 +128,7 @@ const FORECAST_MIN_PACE = 0.2;
 // other's history.
 const HISTORY_PATH = path.join(os.tmpdir(), 'claude-usage-history.json');
 
-// Project when a limit hits 100% at the current pace — see pure.js for the
+// Project when a limit hits 100% at the current pace - see pure.js for the
 // full contract; the three JS copies + Swift are pinned by one fixture.
 export function forecast(samples, resetsAt, nowMs) {
   if (!Array.isArray(samples) || !samples.length) return null;
@@ -208,7 +208,7 @@ export function withPace(cards, {nowMs = Date.now(), historyPath = HISTORY_PATH}
   });
 }
 
-// "resets in 3h06m" / "4d2h" — the two most significant units, like the
+// "resets in 3h06m" / "4d2h" - the two most significant units, like the
 // status line's resetHint.
 export function resetHint(resetsAt, now = Date.now()) {
   if (!resetsAt) return '';
@@ -303,22 +303,22 @@ export async function fetchUsage({fetchImpl = fetch, token = readAccessToken()} 
   }
 }
 
-// One markdown line per limit: label, percent, severity, reset countdown, and —
-// when history supports a projection — the burn rate and whether it runs out
+// One markdown line per limit: label, percent, severity, reset countdown, and -
+// when history supports a projection - the burn rate and whether it runs out
 // before the reset.
 export function renderCards(cards, now = Date.now()) {
   if (!cards.length) return 'No plan limits reported by the usage endpoint.';
   return cards.map(c => {
     const reset = resetHint(c.resetsAt, now);
-    const parts = [`**${c.label}** — ${c.percent}%`];
+    const parts = [`**${c.label}** - ${c.percent}%`];
     if (c.severity !== 'normal') parts.push(c.severity.toUpperCase());
     if (reset) parts.push(`resets in ${reset}`);
     const note = poolNote(c);
     if (note) parts.push(note);
     if (c.pace) {
       parts.push(c.pace.exhaustsBeforeReset
-        ? `↗ ${c.pace.pctPerHour}%/h — ON PACE TO RUN OUT ${Math.abs(c.pace.marginHours)}h before reset (~${c.pace.projectedFullAt})`
-        : `↗ ${c.pace.pctPerHour}%/h — lasts past reset`);
+        ? `↗ ${c.pace.pctPerHour}%/h - ON PACE TO RUN OUT ${Math.abs(c.pace.marginHours)}h before reset (~${c.pace.projectedFullAt})`
+        : `↗ ${c.pace.pctPerHour}%/h - lasts past reset`);
     }
     return `- ${parts.join(' · ')}`;
   }).join('\n');
@@ -330,11 +330,11 @@ const GET_USAGE_TOOL = {
   name: 'get_usage',
   title: 'Claude plan usage',
   description:
-    'Current Claude plan usage: session, weekly, and per-model limits — ' +
+    'Current Claude plan usage: session, weekly, and per-model limits - ' +
     'percent used, severity, and reset time for each, from the official ' +
     'Anthropic usage endpoint (same numbers as /usage). A per-model limit ' +
     '(scoped:true, e.g. Fable) caps a share of the weekly all-models pool and ' +
-    'draws from it — it is not extra quota. When enough local history exists, ' +
+    'draws from it - it is not extra quota. When enough local history exists, ' +
     'each limit also carries a `pace` projection: %/hour burn rate, the ' +
     'projected 100% instant, and whether that lands before the reset.',
   inputSchema: {type: 'object', properties: {}, additionalProperties: false},
@@ -479,7 +479,7 @@ export function main() {
   });
 }
 
-// Run when executed directly — including through the npm/npx bin shim, which
+// Run when executed directly - including through the npm/npx bin shim, which
 // invokes us via a node_modules/.bin symlink, so compare realpaths.
 const invokedAs = (() => {
   try {

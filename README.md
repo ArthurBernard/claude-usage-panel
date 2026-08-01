@@ -2,10 +2,10 @@
 
 # Claude Usage Panel
 
-**See your Claude Code plan usage at a glance — in the GNOME top bar, the macOS
+**See your Claude Code plan usage at a glance - in the GNOME top bar, the macOS
 menu bar, under your Claude Code prompt, or by just asking Claude.**
 
-Session, weekly, and **per-model** limits (Fable, Opus…) — the same numbers as
+Session, weekly, and **per-model** limits (Fable, Opus…) - the same numbers as
 `/usage`, always visible, auto-refreshing. Plus an optional **Cursor**
 team-spend section.
 
@@ -24,7 +24,7 @@ team-spend section.
 
 ## Install
 
-One line — it detects your platform and installs the sensible set:
+One line - it detects your platform and installs the sensible set:
 
 ```bash
 curl -fsSL https://fschmutz.github.io/claude-usage-panel/install | bash
@@ -41,7 +41,7 @@ Name targets to be explicit (`bash -s -- <target…>` through the one-liner, or
 | `gnome` | Top-bar panel + dropdown, alerts, sparklines (GNOME Shell 45–50) | [docs/GNOME.md](docs/GNOME.md) |
 | `macos` | Native SwiftUI menu-bar app, starts at login (macOS 13+) | [macos/README.md](macos/README.md) |
 | `statusline` | One-line usage gauge under the Claude Code prompt | [claude-code/README.md](claude-code/README.md) |
-| `mcp` | `get_usage` tool inside Claude Code **and** Cursor — ask "how much of my plan have I used?" | [mcp/README.md](mcp/README.md) |
+| `mcp` | `get_usage` tool inside Claude Code **and** Cursor - ask "how much of my plan have I used?" | [mcp/README.md](mcp/README.md) |
 | `autoupdate` | Daily check for a new release, installed automatically (on by default) | [wiki](https://github.com/fschmutz/claude-usage-panel/wiki/Installation#staying-up-to-date) |
 
 The status line renders like this, right under the prompt input:
@@ -57,11 +57,11 @@ shows what's detected and installed.
 **It keeps itself current.** On a git checkout the `autoupdate` target is part
 of the default set: once a day it looks for a newer released tag and, if there
 is one, fast-forwards and reinstalls exactly the clients you have. It never
-touches a checkout with local changes or a diverged branch — it logs the reason
+touches a checkout with local changes or a diverged branch - it logs the reason
 and waits. `scripts/auto-update.sh --status` shows where you stand;
 `./install.sh --uninstall autoupdate` turns it off.
 
-The MCP tool also installs without any clone — as a Claude Code plugin
+The MCP tool also installs without any clone - as a Claude Code plugin
 (`/plugin marketplace add fschmutz/claude-usage-panel`, then
 `/plugin install claude-usage@claude-usage-panel`) or one CLI line
 (`claude mcp add claude-usage -- npx -y github:fschmutz/claude-usage-panel`).
@@ -71,15 +71,15 @@ The MCP tool also installs without any clone — as a Claude Code plugin
 Most Claude usage indicators read the endpoint's legacy `five_hour` /
 `seven_day` fields and show only the aggregate session + weekly pair. This one
 reads the modern **`limits[]` array**, so it shows **every** limit the Claude
-app shows — including **per-model weekly limits** (Fable, Opus…) that the
-others miss — on both Linux and macOS, with native UI on each (no Electron),
+app shows - including **per-model weekly limits** (Fable, Opus…) that the
+others miss - on both Linux and macOS, with native UI on each (no Electron),
 plus terminal and in-conversation projections.
 
 | | |
 |---|---|
-| 📊 **All plan limits** | Session, weekly, per-model — one card each, severity colors + reset timers from the API |
-| 📈 **Burn-rate forecast** | "↗ 4%/h — full ~Sat 21:24, 3d7h before reset": each limit is projected from your recent pace, the top bar turns amber the moment a limit is *on track* to run dry before its reset, and a notification fires once — trouble visible at 50%, not at 90% |
-| 🧮 **Pool-aware** | A per-model card (Fable) is labelled as a *share of* the weekly all-models limit, not extra quota — because that is what it is |
+| 📊 **All plan limits** | Session, weekly, per-model - one card each, severity colors + reset timers from the API |
+| 📈 **Burn-rate forecast** | "↗ 4%/h - full ~Sat 21:24, 3d7h before reset": each limit is projected from your recent pace, the top bar turns amber the moment a limit is *on track* to run dry before its reset, and a notification fires once - trouble visible at 50%, not at 90% |
+| 🧮 **Pool-aware** | A per-model card (Fable) is labelled as a *share of* the weekly all-models limit, not extra quota - because that is what it is |
 | 🔔 **Alerts + sparklines** | Desktop notification at 90% / 100% and on projected exhaustion, tiny trend graph per limit |
 | 💲 **Optional extras** | Local [`ccusage`](https://github.com/ryoppippi/ccusage) session cost · Cursor team spend via Admin API |
 | 🔒 **Read-only & private** | Uses your existing local token, never writes it, no telemetry, talks only to official APIs |
@@ -104,7 +104,7 @@ GET https://api.anthropic.com/api/oauth/usage
 
 The response's `limits[]` array drives one card per limit. If the token
 expires, the panel tells you to run any Claude Code command (which refreshes
-it) — it never writes the token itself. The status line is even cheaper: it
+it) - it never writes the token itself. The status line is even cheaper: it
 renders purely from what Claude Code pipes on stdin, no credentials or network
 at all. The optional extras stay just as private: cost runs `ccusage` locally
 against `~/.claude/projects/*.jsonl`, and Cursor spend calls `api.cursor.com`
@@ -124,12 +124,12 @@ with your own admin key.
 
 ## Roadmap
 
-- [ ] extensions.gnome.org listing *(needs a GNOME store account — [PUBLISHING.md](PUBLISHING.md))*
+- [ ] extensions.gnome.org listing *(needs a GNOME store account - [PUBLISHING.md](PUBLISHING.md))*
 - [ ] Notarized macOS `.app` + Homebrew cask *(needs an Apple Developer signing cert)*
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).
 
 ---
 

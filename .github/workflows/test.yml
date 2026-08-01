@@ -28,7 +28,7 @@ jobs:
           node-version: "22"
       - run: node scripts/screenshots/render.mjs --check
 
-  # Linux: fast parity gate — builds/tests only the Foundation-only core.
+  # Linux: fast parity gate - builds/tests only the Foundation-only core.
   swift-core:
     runs-on: ubuntu-latest
     steps:

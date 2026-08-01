@@ -1,6 +1,6 @@
 # Claude Code status line
 
-A condensed, one-line usage view rendered **under the Claude Code prompt** —
+A condensed, one-line usage view rendered **under the Claude Code prompt** -
 without leaving your terminal.
 
 ```text
@@ -8,18 +8,18 @@ Context ▌░░░░░ 8%  Session █▌░░░░ 26% 59m  Week █▌�
 ```
 
 Each part gets a compact gauge colored green / yellow / red (70% / 90%
-thresholds), plus reset countdowns and a **∑ session-token counter** — the total
+thresholds), plus reset countdowns and a **∑ session-token counter** - the total
 tokens the window has consumed, summed from the session transcript.
 
-It reads **only what Claude Code pipes on stdin** — the context window, the
+It reads **only what Claude Code pipes on stdin** - the context window, the
 Session (5 h) / Week (7 d) rate limits, and the transcript path for the token
-total — so it needs **no credentials, no network, no cache of the OAuth
+total - so it needs **no credentials, no network, no cache of the OAuth
 endpoint**, and starts instantly. Per-model (Fable) weekly limits are
 desktop-only by design: stdin never exposes them, so they appear in the GNOME
-extension, the macOS app, and the [[MCP Tool]] — never here.
+extension, the macOS app, and the [[MCP Tool]] - never here.
 
 When your recent pace puts a limit on track to run out **before** its reset,
-the gauge grows a compact amber marker — `Week █▌░░ 52% 2d14h ⚠full Sat21:24` —
+the gauge grows a compact amber marker - `Week █▌░░ 52% 2d14h ⚠full Sat21:24` -
 and stays silent otherwise, so the line only lengthens when something is worth
 knowing. Samples are recorded to a local tmp file shared with the MCP server
 (`$TMPDIR/claude-usage-history.json`); still no credentials and no network.
@@ -36,7 +36,7 @@ Copies the script to `~/.claude/claude-usage-statusline.mjs` and merges a
 `statusLine` entry into `~/.claude/settings.json` without clobbering other
 settings (a foreign status line is backed up and restored on `--uninstall`).
 Open a new session or run `/statusline` to see it. Needs only Node.js (already
-present — Claude Code runs on it).
+present - Claude Code runs on it).
 
 ## Options
 
@@ -47,8 +47,8 @@ command; re-run to change):
 ./install.sh statusline --segments=context,limits,tokens --tokens=all|fresh
 ```
 
-- `--segments` — any order of `context`, `limits`, `tokens`.
-- `--tokens` — `all` (include cache reads: the true throughput) or `fresh`
+- `--segments` - any order of `context`, `limits`, `tokens`.
+- `--tokens` - `all` (include cache reads: the true throughput) or `fresh`
   (only new tokens).
 
 ## Behavior

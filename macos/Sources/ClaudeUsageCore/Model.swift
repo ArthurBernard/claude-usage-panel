@@ -1,6 +1,6 @@
 import Foundation
 
-// Pure model + normalization — Foundation only (no networking, no SwiftUI),
+// Pure model + normalization - Foundation only (no networking, no SwiftUI),
 // so it builds and unit-tests on any platform incl. Linux CI.
 // Mirrors the GNOME extension's lib/pure.js.
 
@@ -80,7 +80,7 @@ public enum UsageNormalizer {
 
     /// Sub-line for a scoped (per-model) card: its percent is a *share* of the
     /// weekly pool (on Max, up to 50 % of the weekly allowance may go to Fable),
-    /// never extra headroom — every Fable token also moves `weekly_all`.
+    /// never extra headroom - every Fable token also moves `weekly_all`.
     public static func poolNote(_ card: LimitCard) -> String {
         card.scoped && card.group == "weekly" ? "Share of the weekly all-models limit" : ""
     }
@@ -140,7 +140,7 @@ public struct Forecast: Equatable, Sendable {
     public let pctPerHour: Double
     /// Instant the limit reaches 100% at this pace, minute precision.
     public let projectedFullAt: Date
-    /// True when `projectedFullAt` lands BEFORE the limit's reset — the case
+    /// True when `projectedFullAt` lands BEFORE the limit's reset - the case
     /// worth warning about.
     public let exhaustsBeforeReset: Bool
     /// projectedFullAt − reset in hours (1 decimal): negative when the limit
@@ -172,7 +172,7 @@ public enum UsageForecast {
         -> Forecast?
     {
         guard !samples.isEmpty else { return nil }
-        // A percent DROP means the window reset between samples — everything
+        // A percent DROP means the window reset between samples - everything
         // before the drop belongs to the previous window.
         var start = 0
         var i = samples.count - 1
@@ -223,8 +223,8 @@ public enum UsageForecast {
             marginHours: margin)
     }
 
-    /// "↗ 1.8%/h — full ~Sun 03:40, 1d10h before reset" (alarming) or
-    /// "↗ 0.6%/h — lasts past reset" (fine). Mirrors pure.js `formatForecast`.
+    /// "↗ 1.8%/h - full ~Sun 03:40, 1d10h before reset" (alarming) or
+    /// "↗ 0.6%/h - lasts past reset" (fine). Mirrors pure.js `formatForecast`.
     public static func format(_ fc: Forecast?) -> String {
         guard let fc else { return "" }
         let paceNum =
@@ -232,7 +232,7 @@ public enum UsageForecast {
             ? String(Int(fc.pctPerHour)) : String(fc.pctPerHour)
         let pace = "↗ \(paceNum)%/h"
         guard fc.exhaustsBeforeReset else {
-            return fc.marginHours == nil ? pace : "\(pace) — lasts past reset"
+            return fc.marginHours == nil ? pace : "\(pace) - lasts past reset"
         }
         let f = DateFormatter()
         f.dateFormat = "EEE HH:mm"
@@ -241,6 +241,6 @@ public enum UsageForecast {
         let dd = Int(lead / 24)
         let hh = Int((lead.truncatingRemainder(dividingBy: 24)).rounded())
         let span = dd > 0 ? "\(dd)d\(hh)h" : "\(hh)h"
-        return "\(pace) — full ~\(f.string(from: fc.projectedFullAt)), \(span) before reset"
+        return "\(pace) - full ~\(f.string(from: fc.projectedFullAt)), \(span) before reset"
     }
 }

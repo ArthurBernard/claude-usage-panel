@@ -1,10 +1,10 @@
 # Claude Usage MCP server
 
-One MCP tool — **`get_usage`** — that returns your Claude plan usage (session,
+One MCP tool - **`get_usage`** - that returns your Claude plan usage (session,
 weekly, and per-model limits with percent, severity, and reset time) inside any
 MCP client: Claude Code, Cursor, Claude Desktop… Ask *"how much of my plan have
 I used?"* and the assistant answers with live numbers from the official
-Anthropic usage endpoint — the same data as the GNOME and macOS panels.
+Anthropic usage endpoint - the same data as the GNOME and macOS panels.
 
 Zero dependencies, stdio transport, read-only: it reads the OAuth token Claude
 Code already stores locally (`~/.claude/.credentials.json` on Linux, the login
@@ -12,7 +12,7 @@ Keychain on macOS) and never writes it.
 
 ## Install
 
-Pick whichever fits — all four register the exact same server:
+Pick whichever fits - all four register the exact same server:
 
 ```sh
 # 1. The unified installer (registers Claude Code + Cursor in one go)
@@ -22,7 +22,7 @@ Pick whichever fits — all four register the exact same server:
 /plugin marketplace add fschmutz/claude-usage-panel
 /plugin install claude-usage@claude-usage-panel
 
-# 3. Claude Code CLI, straight from GitHub — no clone needed
+# 3. Claude Code CLI, straight from GitHub - no clone needed
 claude mcp add claude-usage -- npx -y github:fschmutz/claude-usage-panel
 
 # 4. Cursor: click "Add to Cursor" on https://fschmutz.github.io/claude-usage-panel/
@@ -35,7 +35,7 @@ other MCP servers untouched).
 
 ## Tool
 
-`get_usage` — no arguments. Returns one entry per active limit:
+`get_usage` - no arguments. Returns one entry per active limit:
 
 ```json
 {
@@ -59,6 +59,6 @@ GET https://api.anthropic.com/api/oauth/usage
 ```
 
 The server is the fourth port of the repo's shared normalization contract (see
-`CLAUDE.md`) — `tests/parity.test.js` keeps it behaviorally identical to the
+`CLAUDE.md`) - `tests/parity.test.js` keeps it behaviorally identical to the
 GNOME, macOS, and status-line ports, and `tests/mcp.test.js` covers the MCP
 plumbing itself.

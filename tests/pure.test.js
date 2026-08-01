@@ -152,14 +152,14 @@ test('formatForecast renders the alarming and calm shapes', () => {
         exhaustsBeforeReset: true,
         marginHours: -34.3,
     });
-    assert.match(bad, /^↗ 1\.8%\/h — full ~(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \d{2}:\d{2}, 1d10h before reset$/);
+    assert.match(bad, /^↗ 1\.8%\/h - full ~(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \d{2}:\d{2}, 1d10h before reset$/);
     const fine = formatForecast({
         pctPerHour: 0.6,
         projectedFullAt: '2026-08-09T00:00:00.000Z',
         exhaustsBeforeReset: false,
         marginHours: 12,
     });
-    assert.equal(fine, '↗ 0.6%/h — lasts past reset');
+    assert.equal(fine, '↗ 0.6%/h - lasts past reset');
     const noReset = formatForecast({
         pctPerHour: 4,
         projectedFullAt: '2026-08-02T00:00:00.000Z',

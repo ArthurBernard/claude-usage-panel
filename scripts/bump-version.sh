@@ -8,7 +8,7 @@
 #   • CHANGELOG.md               opens a dated section, leaves a fresh [Unreleased]
 #
 # Usage:  scripts/bump-version.sh 1.4.0
-# It only edits files — review the diff, then commit. Nothing is pushed.
+# It only edits files - review the diff, then commit. Nothing is pushed.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -21,7 +21,7 @@ if ! [[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 fi
 DATE="$(date +%F)"
 
-# JSON files — replace only the version value, in place, so the rest of the
+# JSON files - replace only the version value, in place, so the rest of the
 # file's formatting (array layout, spacing) is untouched.
 bump_json() { # <file> <key>
     V="$V" perl -pi -e 's/("'"$2"'"\s*:\s*")\d+\.\d+\.\d+(")/${1}$ENV{V}${2}/' "$1"
@@ -43,10 +43,10 @@ echo "  PUBLISHING.md cask → $V"
 # CHANGELOG: turn the top [Unreleased] into a dated release, above a fresh one.
 V="$V" DATE="$DATE" perl -pi -e '
   if (!$seen && /^## \[Unreleased\]/) {
-    $_ .= "\n## [$ENV{V}] — $ENV{DATE}\n";
+    $_ .= "\n## [$ENV{V}] - $ENV{DATE}\n";
     $seen = 1;
   }' CHANGELOG.md
-echo "  CHANGELOG.md → ## [$V] — $DATE (with a fresh [Unreleased])"
+echo "  CHANGELOG.md → ## [$V] - $DATE (with a fresh [Unreleased])"
 
 echo
 echo "Bumped to $V. Review the diff, then commit + tag (the tag push triggers"

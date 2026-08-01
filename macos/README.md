@@ -1,16 +1,16 @@
-# Claude Usage Panel — macOS
+# Claude Usage Panel - macOS
 
 A native SwiftUI menu-bar app (`MenuBarExtra`) that mirrors the GNOME extension:
 Claude Code plan limits (session / weekly / per-model like **Fable**) in the
 macOS menu bar, with a designed dropdown, severity colors, reset timers, and
 optional session cost via `ccusage`.
 
-Same data source as the GNOME version — reads the local Claude Code OAuth token
+Same data source as the GNOME version - reads the local Claude Code OAuth token
 (read-only) and calls `https://api.anthropic.com/api/oauth/usage`. On macOS the
 token lives in the **login Keychain** (Claude Code stores it there, not in a
 file), so the app reads it via `security find-generic-password`; it falls back
 to `~/.claude/.credentials.json` if present. The first read may prompt for
-Keychain access — click **Always Allow**.
+Keychain access - click **Always Allow**.
 
 ## Settings
 
@@ -43,7 +43,7 @@ For a reusable `.app` bundle, run the unified installer from the repo root
 Upgrades take care of themselves: installing from a checkout also schedules a
 daily update check (a launchd agent, the `autoupdate` target), which rebuilds and
 relaunches the app when a new release is tagged. By hand it's `./install.sh
-update` (or `update --pull`) — it quits the running app, replaces it in
+update` (or `update --pull`) - it quits the running app, replaces it in
 `/Applications`, and relaunches the new build. `./install.sh --uninstall
 autoupdate` turns the daily check off.
 
@@ -75,8 +75,8 @@ Login Items ▸ **+**.)
 ## Notes
 
 - The menu bar title shows the worst limit, e.g. `✳ Fable 100%`.
-- A per-model card (Fable) is a sub-cap of the weekly all-models pool — that
-  usage also counts toward the weekly limit and shares its reset — so the card
+- A per-model card (Fable) is a sub-cap of the weekly all-models pool - that
+  usage also counts toward the weekly limit and shares its reset - so the card
   says "Share of the weekly all-models limit" under the countdown.
 - Toggle **Cost** and change the **Refresh** interval directly in the dropdown;
   both persist via `UserDefaults`.
@@ -86,5 +86,5 @@ Login Items ▸ **+**.)
   your own token. No telemetry.
 
 > Note: this app was authored on Linux and has **not** been compiled on a Mac
-> yet — build it once with `swift run` and report any type errors. The data
+> yet - build it once with `swift run` and report any type errors. The data
 > layer is a direct port of the verified GNOME logic.

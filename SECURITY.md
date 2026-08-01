@@ -13,4 +13,4 @@ token Claude Code already stores locally and calls Anthropic's official usage AP
 The optional Cursor integration calls `api.cursor.com` with a key you provide; the
 optional cost feature runs `ccusage` locally. No telemetry, no third-party servers.
 
-Secrets are never committed — `gitleaks` runs in pre-commit and CI.
+Secrets are never committed - `gitleaks` runs in pre-commit and CI.

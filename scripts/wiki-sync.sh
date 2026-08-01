@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Publish wiki/ to the GitHub wiki (<repo>.wiki.git). The wiki/ directory in
-# this repo is the single source of truth — pages are edited and reviewed here,
+# this repo is the single source of truth - pages are edited and reviewed here,
 # and this script mirrors them to the wiki repo (deleting pages removed from
 # wiki/). Runs in CI on every push that touches wiki/** (.github/workflows/
 # wiki.yml); can also be run locally, where the push goes through the usual
