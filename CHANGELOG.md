@@ -6,6 +6,16 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Security
+
+- **macOS: the Cursor Admin API key moved from UserDefaults to the login
+  Keychain** (CodeQL high: cleartext storage in a preference store). A key
+  stored by earlier versions migrates on first launch and is scrubbed from the
+  plist.
+- **CI workflows now run least-privilege**: `test.yml` and `pre-commit.yml`
+  declare `permissions: contents: read` instead of inheriting the default
+  write-capable token (closes the five CodeQL workflow-permissions alerts).
+
 ## [1.7.0] - 2026-08-01
 
 ### Added

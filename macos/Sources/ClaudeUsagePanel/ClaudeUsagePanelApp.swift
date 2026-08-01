@@ -55,7 +55,8 @@ final class UsageModel: ObservableObject {
     }
     @Published var cursorApiKey: String {
         didSet {
-            UserDefaults.standard.set(cursorApiKey, forKey: "cursorApiKey")
+            // Secret → login Keychain, never UserDefaults (cleartext plist).
+            KeychainStore.write("cursor-admin-api-key", cursorApiKey)
             Task { await refresh() }
         }
     }
@@ -76,7 +77,13 @@ final class UsageModel: ObservableObject {
         showCost = UserDefaults.standard.bool(forKey: "showCost")
         alertsEnabled = UserDefaults.standard.object(forKey: "alertsEnabled") as? Bool ?? true
         cursorEnabled = UserDefaults.standard.bool(forKey: "cursorEnabled")
-        cursorApiKey = UserDefaults.standard.string(forKey: "cursorApiKey") ?? ""
+        // Key lives in the Keychain. Migrate a value stored in UserDefaults by
+        // pre-Keychain versions once, then scrub it from the plist.
+        if let legacy = UserDefaults.standard.string(forKey: "cursorApiKey"), !legacy.isEmpty {
+            KeychainStore.write("cursor-admin-api-key", legacy)
+            UserDefaults.standard.removeObject(forKey: "cursorApiKey")
+        }
+        cursorApiKey = KeychainStore.read("cursor-admin-api-key") ?? ""
         // Pair-form [epochMs, percent] history; bare-percent entries written by
         // older versions migrate as [0, p] - sparkline keeps working, the
         // forecast simply ignores the timestampless samples.
