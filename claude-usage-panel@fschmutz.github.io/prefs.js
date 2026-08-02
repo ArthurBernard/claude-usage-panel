@@ -2,6 +2,8 @@ import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';
 import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
+import {storeSecret, lookupSecret} from './lib/secretStore.js';
+
 export default class ClaudeUsagePanelPrefs extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
@@ -61,7 +63,7 @@ export default class ClaudeUsagePanelPrefs extends ExtensionPreferences {
 
         const cursor = new Adw.PreferencesGroup({
             title: _('Cursor (optional)'),
-            description: _('Show Cursor team spend using the Cursor Admin API. Create a key at cursor.com → team → Settings → Admin API. Stored locally in dconf.'),
+            description: _('Show Cursor team spend using the Cursor Admin API. Create a key at cursor.com → team → Settings → Admin API. Stored in the system keyring.'),
         });
         const cursorRow = new Adw.SwitchRow({
             title: _('Show Cursor usage'),
@@ -70,9 +72,33 @@ export default class ClaudeUsagePanelPrefs extends ExtensionPreferences {
         settings.bind('cursor-enabled', cursorRow, 'active', 0);
         cursor.add(cursorRow);
 
-        const keyRow = new Adw.PasswordEntryRow({ title: _('Cursor Admin API key') });
-        keyRow.text = settings.get_string('cursor-api-key');
-        keyRow.connect('changed', row => settings.set_string('cursor-api-key', row.text));
+        // The key lives in the system keyring (libsecret). The dconf slot is
+        // only a legacy source (migrated by the extension) and a fallback for
+        // systems without a Secret Service. `loaded` gates the changed handler
+        // so prefilling the row can't echo the value back into a store cycle.
+        const keyRow = new Adw.PasswordEntryRow({title: _('Cursor Admin API key')});
+        let loaded = false;
+        lookupSecret('cursor-admin-api-key').then(stored => {
+            keyRow.text = stored ?? settings.get_string('cursor-api-key');
+            loaded = true;
+        });
+        keyRow.connect('changed', row => {
+            if (!loaded)
+                return;
+            storeSecret('cursor-admin-api-key', row.text).then(ok => {
+                if (ok) {
+                    // Scrub any legacy cleartext copy and nudge the running
+                    // extension (the stamp carries no secret).
+                    if (settings.get_string('cursor-api-key'))
+                        settings.set_string('cursor-api-key', '');
+                    settings.set_string('cursor-key-stamp', String(Date.now()));
+                } else {
+                    // No Secret Service on this system: keep the old dconf
+                    // path so the feature still works.
+                    settings.set_string('cursor-api-key', row.text);
+                }
+            });
+        });
         cursor.add(keyRow);
         page.add(cursor);
 

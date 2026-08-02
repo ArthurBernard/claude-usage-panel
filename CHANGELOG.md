@@ -12,6 +12,13 @@ semantic versioning.
   Keychain** (CodeQL high: cleartext storage in a preference store). A key
   stored by earlier versions migrates on first launch and is scrubbed from the
   plist.
+- **GNOME: the same key moved from dconf to the system keyring** (libsecret /
+  gnome-keyring) - the sibling of the macOS fix, same cleartext exposure,
+  just not flagged because CodeQL doesn't scan GJS. A dconf value from earlier
+  versions migrates into the keyring on first use and the dconf slot is
+  scrubbed; on a system without a running Secret Service everything fails soft
+  to the old dconf path, so the panel never breaks over a missing keyring
+  daemon.
 - **CI workflows now run least-privilege**: `test.yml` and `pre-commit.yml`
   declare `permissions: contents: read` instead of inheriting the default
   write-capable token (closes the five CodeQL workflow-permissions alerts).

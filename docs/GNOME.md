@@ -58,7 +58,7 @@ gnome-extensions prefs claude-usage-panel@fschmutz.github.io
   `/teams/filtered-usage-events`) and shows the billing-cycle spend, today's
   spend, and the top spender - with a colored % gauge when the team has a
   monthly spend limit set. Cursor is usage-based, so it shows spend rather than
-  a percentage otherwise. Off by default; the key is stored locally in dconf.
+  a percentage otherwise. Off by default; the key is stored in the system keyring (libsecret).
 
 ## Updating
 

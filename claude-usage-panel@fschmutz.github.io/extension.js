@@ -17,6 +17,7 @@ import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/ex
 import {fetchUsage} from './lib/claudeUsage.js';
 import {fetchActiveCost} from './lib/cost.js';
 import {fetchCursor} from './lib/cursorUsage.js';
+import {storeSecret, lookupSecret} from './lib/secretStore.js';
 import {
     severityClass, sparkline, formatResets, alertThreshold, poolNote,
     forecast, formatForecast, normalizeHistory, historyPercents,
@@ -134,6 +135,7 @@ class ClaudeUsageButton extends PanelMenu.Button {
             'changed::panel-mode', () => this._renderPanel(),
             'changed::cursor-enabled', () => this.refresh(),
             'changed::cursor-api-key', () => this.refresh(),
+            'changed::cursor-key-stamp', () => this.refresh(),
             this
         );
 
@@ -300,8 +302,23 @@ class ClaudeUsageButton extends PanelMenu.Button {
         }
     }
 
+    // The key lives in the system keyring; the dconf slot is only the legacy
+    // location and the fallback for systems without a Secret Service. A value
+    // found in dconf while the keyring works is migrated in and scrubbed.
+    async _cursorKey() {
+        const stored = await lookupSecret('cursor-admin-api-key');
+        if (stored)
+            return stored;
+        const legacy = this._settings.get_string('cursor-api-key');
+        if (legacy && await storeSecret('cursor-admin-api-key', legacy))
+            this._settings.set_string('cursor-api-key', '');
+        return legacy;
+    }
+
     async _refreshCursor() {
-        const key = this._settings.get_string('cursor-api-key');
+        const key = await this._cursorKey();
+        if (this._destroyed)
+            return;
         if (!this._settings.get_boolean('cursor-enabled') || !key) {
             this._cursorItem.visible = false;
             return;

@@ -23,4 +23,4 @@ Quick toggles (Cost, Alerts, Refresh) live in the dropdown; a full **Settings** 
 | **Show session cost** | Compute session cost locally via `ccusage`. |
 | **Show Cursor usage** | Add the Cursor team-spend section (see [[Cursor Integration]]). |
 
-Preferences persist in dconf (GNOME) / `UserDefaults` (macOS).
+Preferences persist in dconf (GNOME) / `UserDefaults` (macOS); the Cursor Admin API key is the exception and lives in the system keyring (libsecret) / the login Keychain.

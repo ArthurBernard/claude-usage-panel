@@ -18,5 +18,5 @@ Adds a **Cursor team-spend** section to the dropdown using the Cursor Admin API.
 ## Endpoints
 
 `POST /teams/spend` and `POST /teams/filtered-usage-events` on `api.cursor.com`, HTTP Basic auth
-with the key as the username. The key is stored locally (dconf / `UserDefaults`) and never leaves
+with the key as the username. The key is stored in the system keyring (libsecret on GNOME, the login Keychain on macOS; values saved by older versions migrate there automatically) and never leaves
 your machine except to Cursor.

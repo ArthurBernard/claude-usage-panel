@@ -34,8 +34,13 @@
     </key>
     <key name="cursor-api-key" type="s">
       <default>''</default>
-      <summary>Cursor Admin API key</summary>
-      <description>Team Admin API key (Basic auth) used to read Cursor spend. Stored locally in dconf.</description>
+      <summary>Cursor Admin API key (legacy / fallback slot)</summary>
+      <description>The key normally lives in the system keyring (libsecret), not here. This dconf slot only holds it when no Secret Service is available, and pre-keyring values are migrated out of it on first use.</description>
+    </key>
+    <key name="cursor-key-stamp" type="s">
+      <default>''</default>
+      <summary>Cursor key change stamp</summary>
+      <description>Bumped by the preferences dialog after writing the key to the keyring, so the running extension knows to refresh. Carries no secret.</description>
     </key>
     <key name="history" type="s">
       <default>'{}'</default>
