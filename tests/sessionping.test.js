@@ -287,6 +287,41 @@ test('a plist written by the macOS app is read back the same way', (t) => {
     assert.match(r.stdout, /schedule: at 06:00 11:00 on days 2,4/);
 });
 
+test('a checkout path with XML metacharacters is escaped into the launchd plists', (t) => {
+    // install.sh bakes $ROOT/scripts/<worker>.sh into the agent it writes. A
+    // path containing &, < or > is legal on disk but not in XML: unescaped, it
+    // produces a plist launchd refuses to load, and the only symptom is
+    // "could not load the agent". Both plist writers share _au_xml_escape, so
+    // install both targets from one such checkout and check both files.
+    const home = makeSandbox(t);
+    const checkout = path.join(home, 'Dev & Ops', '<beta>');
+    fs.mkdirSync(path.join(checkout, 'scripts'), {recursive: true});
+    fs.copyFileSync(INSTALL, path.join(checkout, 'install.sh'));
+    for (const w of ['session-ping.sh', 'auto-update.sh']) {
+        fs.copyFileSync(path.join(ROOT, 'scripts', w), path.join(checkout, 'scripts', w));
+    }
+    // autoupdate refuses to schedule anything outside a git checkout.
+    run('git', ['init', '-q', checkout]);
+
+    const r = run('bash', [path.join(checkout, 'install.sh'), 'autoupdate', 'sessionping',
+        '06:00', '--days=mon'], {env: env(home, {extra: {CUP_TEST_SCHEDULER: 'launchd'}})});
+    assert.equal(r.status, 0);
+
+    const agents = path.join(home, 'Library', 'LaunchAgents');
+    for (const [label, worker] of [
+        ['io.github.fschmutz.claude-usage-panel.sessionping', 'session-ping'],
+        ['io.github.fschmutz.claude-usage-panel.update', 'auto-update'],
+    ]) {
+        const plist = fs.readFileSync(path.join(agents, `${label}.plist`), 'utf8');
+        assert.match(
+            plist,
+            new RegExp(`<string>[^<]*Dev &amp; Ops/&lt;beta&gt;/scripts/${worker}\\.sh</string>`),
+            `${label}: runner path not XML-escaped`,
+        );
+        assert.doesNotMatch(plist, /Dev & Ops/, `${label}: raw metacharacter left in the plist`);
+    }
+});
+
 test('invalid times and days exit 2', (t) => {
     const home = makeSandbox(t);
     for (const args of [

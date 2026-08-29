@@ -23,6 +23,24 @@ semantic versioning.
   rendered as a short bar in the middle of the track. Fixed on both gauges (the
   limit cards and the Cursor spend bar). Reproduced and verified on GNOME Shell
   46 / Wayland.
+- **An install path containing `&`, `<` or `>` produced a launchd agent macOS
+  refused to load.** Both writers of the plist - `install.sh`'s heredoc and the
+  macOS app's `SessionPingAgent.plistXML` - interpolated the worker path into
+  XML raw, so a checkout under a `Dev & Ops` folder was enough to break
+  `sessionping` and `autoupdate` scheduling, with no symptom beyond "launchctl
+  could not load the agent". Both sides now escape through one mirrored helper
+  (`_au_xml_escape` / `SessionPingAgent.xmlEscape`); nothing has to unescape,
+  since the readers match integers or parse through
+  `PropertyListSerialization`.
+- **macOS: `launchctl` ran with pipes nobody read.** An undrained pipe
+  deadlocks `waitUntilExit()` if the child ever fills the buffer.
+  `FileHandle.nullDevice` on both streams removes the hazard, matching what
+  `Updates.run()` already does.
+- **macOS: editing a ping time reloaded the launchd agent on every spinner
+  tick.** A `DatePicker` fires its binding once per increment and each one was
+  a full `bootout` + `bootstrap`, so dragging the minute field tore the agent
+  down and rebuilt it repeatedly. Edits are now coalesced into a single
+  rewrite once they settle.
 
 ## [1.9.0] - 2026-09-01
 
