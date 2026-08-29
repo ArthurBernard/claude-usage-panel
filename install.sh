@@ -445,6 +445,25 @@ _au_write() {
     cat >"$path"
 }
 
+# XML-escape a value going into a launchd plist. An install path may legally
+# contain &, < or > - a "Dev & Ops" folder is enough - and interpolating one
+# raw produces a plist launchd refuses to load, surfacing only as the
+# unhelpful "could not load the agent". Shared by the autoupdate and
+# sessionping targets, and mirrored by SessionPingAgent.xmlEscape
+# (macos/Sources/ClaudeUsageCore) so the two writers of the sessionping plist
+# stay byte-identical: the same three characters, & first so the
+# substitutions cannot chain. Nothing has to unescape - the readers here only
+# ever match integers and the --days= list, and the Swift side parses through
+# PropertyListSerialization.
+#
+# not ${s//&/&amp;}: bash 5.2 reads & in a substitution replacement as the
+# matched text (bash 3.2, the stock macOS one, does not), so the same
+# expansion escapes differently depending on the shell. sed's \& is POSIX and
+# means the same thing everywhere.
+_au_xml_escape() {
+    printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
+}
+
 _au_installed() {
     [ -f "$(_au_systemd_dir)/$AU_UNIT.timer" ] && return 0
     [ -f "$(_au_plist)" ] && return 0
@@ -495,18 +514,20 @@ EOF
             $DRY || ok "systemd user timer enabled (systemctl --user list-timers | grep $AU_UNIT)"
             ;;
         launchd)
-            local plist
+            local plist runner_xml label_xml
             plist="$(_au_plist)"
+            runner_xml="$(_au_xml_escape "$runner")"
+            label_xml="$(_au_xml_escape "$AU_LABEL")"
             _au_write "$plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>$AU_LABEL</string>
+  <key>Label</key><string>$label_xml</string>
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>$runner</string>
+    <string>$runner_xml</string>
     <string>--quiet</string>
   </array>
   <key>StartCalendarInterval</key>
@@ -741,8 +762,10 @@ EOF
             $DRY || ok "systemd user timer enabled (systemctl --user list-timers | grep $SP_UNIT)"
             ;;
         launchd)
-            local plist intervals=""
+            local plist intervals="" runner_xml label_xml
             plist="$(_sp_plist)"
+            runner_xml="$(_au_xml_escape "$runner")"
+            label_xml="$(_au_xml_escape "$SP_LABEL")"
             for t in "${times[@]}"; do
                 h="$((10#${t%%:*}))"
                 m="$((10#${t#*:}))"
@@ -753,11 +776,11 @@ EOF
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>$SP_LABEL</string>
+  <key>Label</key><string>$label_xml</string>
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>$runner</string>
+    <string>$runner_xml</string>
     <string>--quiet</string>
     <string>--days=$days</string>
   </array>

@@ -61,6 +61,31 @@ final class SessionPingAgentTests: XCTestCase {
         XCTAssertEqual(xml, expected)
     }
 
+    // A checkout under a path with XML metacharacters must still produce a
+    // plist launchd can load - unescaped, the only symptom is the unhelpful
+    // "could not load the agent". install.sh's `_au_xml_escape` writes the
+    // same bytes for the same path.
+    func testRunnerPathIsXMLEscaped() throws {
+        let runner = "/Users/x/Dev & Ops/<beta>/session-ping.sh"
+        let xml = SessionPingAgent.plistXML(schedule: schedule, runner: runner)
+        let escaped = "/Users/x/Dev &amp; Ops/&lt;beta&gt;/session-ping.sh"
+        XCTAssertTrue(xml.contains("    <string>\(escaped)</string>"), xml)
+        // Escaped going in, raw coming back out - and the plist still parses,
+        // which is the part an unescaped `&` breaks.
+        let parsed = try XCTUnwrap(SessionPingAgent.parse(plistData: Data(xml.utf8)))
+        XCTAssertEqual(parsed.runner, runner)
+        XCTAssertEqual(parsed.schedule, schedule)
+    }
+
+    func testXMLEscapeHandlesTheThreeCharactersInOrder() {
+        XCTAssertEqual(SessionPingAgent.xmlEscape("/plain/path.sh"), "/plain/path.sh")
+        XCTAssertEqual(SessionPingAgent.xmlEscape("a & b"), "a &amp; b")
+        XCTAssertEqual(SessionPingAgent.xmlEscape("<x>"), "&lt;x&gt;")
+        // `&` first: the input is raw text, so an entity-looking substring is
+        // escaped again rather than half-decoded. The shell mirror does the same.
+        XCTAssertEqual(SessionPingAgent.xmlEscape("&amp;"), "&amp;amp;")
+    }
+
     func testRoundTrip() throws {
         let xml = SessionPingAgent.plistXML(schedule: schedule, runner: "/x/session-ping.sh")
         let parsed = try XCTUnwrap(SessionPingAgent.parse(plistData: Data(xml.utf8)))

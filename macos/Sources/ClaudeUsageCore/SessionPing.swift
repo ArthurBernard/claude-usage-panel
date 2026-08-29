@@ -38,6 +38,21 @@ public struct SessionPingSchedule: Equatable {
 public enum SessionPingAgent {
     public static let label = "io.github.fschmutz.claude-usage-panel.sessionping"
 
+    /// XML-escape text going into the plist. A checkout or install path may
+    /// legally contain `&`, `<` or `>` - a `Dev & Ops` folder is enough - and
+    /// interpolating one raw produces a plist launchd refuses to load, which
+    /// surfaces only as the unhelpful "could not load the agent". install.sh's
+    /// `_au_xml_escape` escapes the same three characters in the same order
+    /// (`&` first, so the substitutions cannot chain), which is what keeps the
+    /// two writers byte-identical. Nothing has to unescape: `parse()` reads
+    /// through PropertyListSerialization and the shell parsers only ever match
+    /// integers and the `--days=` list.
+    public static func xmlEscape(_ text: String) -> String {
+        text.replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+    }
+
     /// Render the launchd agent plist. Must stay byte-identical to the heredoc
     /// in install.sh's `install_sessionping` - the shell side parses it back
     /// with line-oriented sed/grep, not a plist library.
@@ -56,11 +71,11 @@ public enum SessionPingAgent {
             <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
             <plist version="1.0">
             <dict>
-              <key>Label</key><string>\(label)</string>
+              <key>Label</key><string>\(xmlEscape(label))</string>
               <key>ProgramArguments</key>
               <array>
                 <string>/bin/bash</string>
-                <string>\(runner)</string>
+                <string>\(xmlEscape(runner))</string>
                 <string>--quiet</string>
                 <string>--days=\(schedule.daysArg)</string>
               </array>
