@@ -102,6 +102,12 @@ final class UsageModel: ObservableObject {
     /// Init reads the plist back through these properties; only user edits
     /// (after init) may rewrite it.
     private var sessionPingReady = false
+    /// In-flight (delayed) agent rewrite - see applySessionPing().
+    private var sessionPingApplyTask: Task<Void, Never>?
+    /// How long an edit must settle before the agent is rewritten. Long enough
+    /// to swallow a spinner drag, short enough that closing Settings right
+    /// after an edit still lands it.
+    private static let sessionPingApplyDelayNs: UInt64 = 600_000_000
     /// Per-limit [epochMs, percent] samples - sparkline + burn-rate forecast.
     @Published private(set) var history: [String: [[Double]]] = [:]
     @Published private(set) var forecasts: [String: Forecast] = [:]
@@ -298,11 +304,22 @@ final class UsageModel: ObservableObject {
         }
     }
 
+    /// Rewrite the launchd agent, coalescing bursts of edits into one write.
+    /// A DatePicker fires `didSet` on every spinner tick and each apply() is a
+    /// full `bootout` + `bootstrap`, so dragging the minute field would tear
+    /// the agent down and reload it once per increment. Waiting for the edit
+    /// to settle collapses that into a single reload.
     private func applySessionPing() {
         guard sessionPingReady else { return }
-        sessionPingError = SessionPing.apply(
-            enabled: sessionPingEnabled,
-            schedule: SessionPingSchedule(times: sessionPingTimes, days: sessionPingDays))
+        sessionPingApplyTask?.cancel()
+        sessionPingApplyTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: Self.sessionPingApplyDelayNs)
+            guard !Task.isCancelled, let self else { return }
+            self.sessionPingError = SessionPing.apply(
+                enabled: self.sessionPingEnabled,
+                schedule: SessionPingSchedule(
+                    times: self.sessionPingTimes, days: self.sessionPingDays))
+        }
     }
 
     /// Re-read the agent plist into the model - the CLI installer edits the
@@ -310,6 +327,7 @@ final class UsageModel: ObservableObject {
     /// rewrite the plist from a stale copy). Guarded so the read-back itself
     /// never triggers apply().
     func reloadSessionPing() {
+        sessionPingApplyTask?.cancel()
         sessionPingReady = false
         let sp = SessionPing.read()
         sessionPingEnabled = sp.enabled
