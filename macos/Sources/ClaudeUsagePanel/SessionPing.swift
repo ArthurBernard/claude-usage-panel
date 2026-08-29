@@ -82,12 +82,15 @@ enum SessionPing {
         _ = launchctl(["bootout", "gui/\(getuid())/\(SessionPingAgent.label)"])
     }
 
+    /// `nullDevice` rather than unread `Pipe()`s: nothing here reads launchctl's
+    /// output, and an undrained pipe deadlocks waitUntilExit() if the child ever
+    /// fills the buffer. Same reason as Updates.run().
     private static func launchctl(_ args: [String]) -> Bool {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/launchctl")
         proc.arguments = args
-        proc.standardOutput = Pipe()
-        proc.standardError = Pipe()
+        proc.standardOutput = FileHandle.nullDevice
+        proc.standardError = FileHandle.nullDevice
         guard (try? proc.run()) != nil else { return false }
         proc.waitUntilExit()
         return proc.terminationStatus == 0
