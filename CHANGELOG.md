@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-09-01
+
 ### Fixed
 
 - **Scheduled session pings never ran when `claude` came from a node version
