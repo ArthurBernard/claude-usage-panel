@@ -465,8 +465,10 @@ class ClaudeUsageButton extends PanelMenu.Button {
             : _('Today\u2019s sessions (est.)');
         for (const session of sessions) {
             const row = new St.BoxLayout({style_class: 'cu-session-row', x_expand: true});
+            // The rows are buttons; a static screenshot cannot show a hover,
+            // so the glyph is what says "this one is clickable".
             row.add_child(new St.Label({
-                text: session.label,
+                text: `\u25b8 ${session.label}`,
                 style_class: 'cu-session-label',
                 x_expand: true,
                 y_align: Clutter.ActorAlign.CENTER,

@@ -142,7 +142,7 @@ y += 26;
 text(PAD, y, "Today's sessions (est.)", 13, C.text, 'font-weight="700"');
 for (const s of DATA.sessions) {
   y += 19;
-  text(PAD, y, s.label, 12, C.text, 'font-weight="600"');
+  text(PAD, y, `\u25b8 ${s.label}`, 12, C.text, 'font-weight="600"');
   parts.push(`<text x="${W - PAD}" y="${y}" font-size="11" fill="${C.dim}" ${FONT} text-anchor="end">${esc(`${compactTokens(s.tokens)}  ${s.when}`)}</text>`);
 }
 y += 26;

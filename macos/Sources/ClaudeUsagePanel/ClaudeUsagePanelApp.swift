@@ -682,7 +682,10 @@ private struct SessionsSectionView: View {
                     model.resume(session)
                 } label: {
                     HStack {
-                        Text(session.label).font(.system(size: 12, weight: .semibold))
+                        // The glyph marks the row as an action - a hover
+                        // highlight alone is invisible until you are on it.
+                        Text("\u{25b8} \(session.label)")
+                            .font(.system(size: 12, weight: .semibold))
                         Spacer()
                         Text(
                             "\(SessionFormat.compactTokens(session.tokens))  \(session.when)"
