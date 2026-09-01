@@ -141,6 +141,37 @@ test('a missing claude CLI is a skip (exit 0), not an error', (t) => {
     assert.equal(calls(home), '');
 });
 
+test('resolves claude from a node version manager prefix, newest version first', (t) => {
+    const home = makeSandbox(t);
+    // The scheduler PATH has no claude and none of the fixed probe dirs hold
+    // one: the only installs are under an nvm-style per-version prefix, which
+    // is where `npm i -g @anthropic-ai/claude-code` lands under nvm. Both
+    // versions are named so that lexical and version ordering agree, so the
+    // assertion holds whether or not this sort supports -V.
+    for (const version of ['v18.20.4', 'v22.9.0']) {
+        const bin = path.join(home, '.nvm', 'versions', 'node', version, 'bin');
+        fs.mkdirSync(bin, {recursive: true});
+        fs.writeFileSync(
+            path.join(bin, 'claude'),
+            `#!/bin/sh\necho "${version} $@" >>"$HOME/claude-calls.log"\n`,
+        );
+        fs.chmodSync(path.join(bin, 'claude'), 0o755);
+    }
+    // Drop the test hook so the real probe list runs, and point every version
+    // manager at the sandbox so a developer's own nvm/fnm/volta is never read.
+    const e = env(home, {withClaude: false});
+    delete e.SP_TEST_CLAUDE_PATHS;
+    e.NVM_DIR = path.join(home, '.nvm');
+    e.FNM_DIR = path.join(home, 'no-fnm');
+    e.ASDF_DATA_DIR = path.join(home, 'no-asdf');
+    e.VOLTA_HOME = path.join(home, 'no-volta');
+
+    const r = run('bash', [SCRIPT, '--force'], {env: e});
+    assert.equal(r.status, 0);
+    assert.match(r.stdout, /pinged \(model haiku\)/);
+    assert.match(calls(home), /^v22\.9\.0 -p ping /);
+});
+
 test('a failing claude exits 1', (t) => {
     const home = makeSandbox(t);
     fs.writeFileSync(path.join(home, 'bin', 'claude'), '#!/bin/sh\nexit 3\n');

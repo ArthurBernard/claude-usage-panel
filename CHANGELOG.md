@@ -6,6 +6,17 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Scheduled session pings never ran when `claude` came from a node version
+  manager.** `resolve_claude` probed `~/.local/bin`, `~/.claude/local`,
+  `/opt/homebrew/bin` and `/usr/local/bin` only, but `npm i -g
+  @anthropic-ai/claude-code` under nvm installs into
+  `~/.nvm/versions/node/<version>/bin`, which no scheduler has on PATH. The
+  install-time check passed (an interactive shell has nvm loaded) and then
+  every timer firing logged `skip: claude CLI not found on PATH`. The probe now
+  also covers nvm, fnm, asdf and volta, newest node version first.
+
 ## [1.9.0] - 2026-09-01
 
 ### Added
