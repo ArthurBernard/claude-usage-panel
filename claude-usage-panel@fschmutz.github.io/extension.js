@@ -50,15 +50,21 @@ class UsageCard extends St.BoxLayout {
         head.add_child(this._label);
         head.add_child(this._pct);
 
-        // St.Bin centers its child by default; force START so the fill grows
-        // from the left edge instead of sitting centered in the track.
+        // x_align on the Bin only places the track inside the card. What
+        // decides whether the fill grows from the left edge or sits centered
+        // on its CSS width is the fill's own x_align, so START belongs on
+        // both: on the child it is what actually left-aligns the bar.
         const track = new St.Bin({
             style_class: 'cu-track',
             x_align: Clutter.ActorAlign.START,
             y_align: Clutter.ActorAlign.CENTER,
             x_expand: false,
         });
-        this._fill = new St.Widget({style_class: 'cu-fill'});
+        this._fill = new St.Widget({
+            style_class: 'cu-fill',
+            x_align: Clutter.ActorAlign.START,
+            x_expand: false,
+        });
         track.set_child(this._fill);
 
         this._reset = new St.Label({style_class: 'cu-card-reset'});
@@ -216,7 +222,11 @@ class ClaudeUsageButton extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
             x_expand: false,
         });
-        this._cursorFill = new St.Widget({style_class: 'cu-fill'});
+        this._cursorFill = new St.Widget({
+            style_class: 'cu-fill',
+            x_align: Clutter.ActorAlign.START,
+            x_expand: false,
+        });
         this._cursorTrack.set_child(this._cursorFill);
         this._cursorTrack.visible = false;
         this._cursorToday = new St.Label({text: '', style_class: 'cu-updated'});
