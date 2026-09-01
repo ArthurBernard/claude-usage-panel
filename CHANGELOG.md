@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-09-01
+
 ### Added
 
 - **Resume today's session from the panel.** The GNOME dropdown and the macOS
