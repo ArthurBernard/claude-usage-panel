@@ -16,6 +16,13 @@ semantic versioning.
   install-time check passed (an interactive shell has nvm loaded) and then
   every timer firing logged `skip: claude CLI not found on PATH`. The probe now
   also covers nvm, fnm, asdf and volta, newest node version first.
+- **The GNOME progress fill sat centered in its track.** `db2b318` set
+  `x_align: START` on the `St.Bin` track, but that only places the track inside
+  the card; what decides whether the fill grows from the left edge or floats
+  centered on its CSS width is the fill actor's own `x_align`. A 5% limit
+  rendered as a short bar in the middle of the track. Fixed on both gauges (the
+  limit cards and the Cursor spend bar). Reproduced and verified on GNOME Shell
+  46 / Wayland.
 
 ## [1.9.0] - 2026-09-01
 
