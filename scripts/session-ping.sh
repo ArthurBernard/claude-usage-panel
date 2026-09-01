@@ -89,14 +89,19 @@ version_sort_desc() {
 # way to get the CLI on Linux. Print one candidate bin dir per line, newest
 # version first so a node upgrade does not strand the ping on an old install.
 node_manager_bins() {
-    local spec root sub version
+    local spec root sub version path
     for spec in "${NVM_DIR:-$HOME/.nvm}/versions/node|bin" \
         "${FNM_DIR:-$HOME/.local/share/fnm}/node-versions|installation/bin" \
         "${ASDF_DATA_DIR:-$HOME/.asdf}/installs/nodejs|bin"; do
         root="${spec%|*}"
         sub="${spec#*|}"
         if [ -d "$root" ]; then
-            ls "$root" 2>/dev/null | version_sort_desc | while IFS= read -r version; do
+            # A glob, not `ls`: a version directory with a space or a newline in
+            # its name would be split into two bogus candidates (SC2012).
+            for path in "$root"/*; do
+                [ -d "$path" ] || continue
+                printf '%s\n' "${path##*/}"
+            done | version_sort_desc | while IFS= read -r version; do
                 printf '%s/%s/%s\n' "$root" "$version" "$sub"
             done
         fi
